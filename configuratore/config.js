@@ -6,7 +6,36 @@ const ALL_MODS = [...MODULI_BASE, ...MODULI_EXTRA];
 const modById = id => byId(ALL_MODS, id);
 
 const STEPS = ['Azienda','Settore','Moduli','Anteprima'];
-const S = { step:1, azienda:'', settore:null, extra:new Set(), previewView:'hub', device:'phone' };
+const S = { step:1, azienda:'', settore:null, extra:new Set(), previewView:'hub', device:'phone', accent:'#6EE7B7' };
+
+/* ---------------- color picker (accento per-azienda) ---------------- */
+const COLORI = [
+  {h:'#6EE7B7',n:'Mint'},   {h:'#34D399',n:'Verde'},  {h:'#2DD4BF',n:'Teal'},
+  {h:'#60A5FA',n:'Blu'},    {h:'#818CF8',n:'Indaco'}, {h:'#A78BFA',n:'Viola'},
+  {h:'#F472B6',n:'Rosa'},   {h:'#F87171',n:'Rosso'},  {h:'#FB923C',n:'Arancio'},
+  {h:'#FBBF24',n:'Ambra'}
+];
+function colorPicker(opts={}){
+  const title = opts.title || 'Colore della tua app';
+  const hint  = opts.hint || '';
+  const sw = COLORI.map(c=>`<button class="sw ${S.accent.toLowerCase()===c.h.toLowerCase()?'on':''}" data-c="${c.h}" style="--swc:${c.h}" title="${esc(c.n)}" onclick="setAccent('${c.h}')"></button>`).join('');
+  return `<div class="cpick">
+    <div class="cpick-h">${esc(title)}${hint?`<span class="cpick-hint">${esc(hint)}</span>`:''}</div>
+    <div class="cpick-row">
+      ${sw}
+      <label class="sw sw-custom" title="Colore personalizzato"><input type="color" value="${S.accent}" oninput="setAccent(this.value)"></label>
+    </div>
+  </div>`;
+}
+function setAccent(hex){
+  if(!hex) return;
+  S.accent = hex;
+  document.querySelectorAll('.cpick .sw[data-c]').forEach(s=>{
+    s.classList.toggle('on', s.getAttribute('data-c').toLowerCase()===hex.toLowerCase());
+  });
+  document.querySelectorAll('.cpick .sw-custom input').forEach(i=>{ i.value=hex; });
+  if(S.step===4) refreshPreview();
+}
 
 /* ---------------- render router ---------------- */
 function render(){
@@ -33,6 +62,9 @@ function step1(){
       <label>Nome dell'azienda</label>
       <input id="az" value="${esc(S.azienda)}" placeholder="es. La Mia Azienda S.r.l." oninput="S.azienda=this.value" maxlength="48">
     </div>
+  </div>
+  <div class="card" style="margin-top:12px">
+    ${colorPicker({title:"Colore della tua app", hint:"sarà l'accento dell'app — lo vedrai nell'anteprima"})}
   </div>
   <div class="navbar">
     <div class="sp"></div>
@@ -147,11 +179,14 @@ function step4(){
 const _short = n => esc(n.split(/[\s\/]/)[0]);
 function previewArea(){
   return `
-  <div class="device-toggle">
-    <button class="${S.device==='phone'?'on':''}" onclick="setDevice('phone')">📱 Telefono</button>
-    <button class="${S.device==='pc'?'on':''}" onclick="setDevice('pc')">💻 Computer</button>
+  <div class="preview-controls">
+    <div class="device-toggle">
+      <button class="${S.device==='phone'?'on':''}" onclick="setDevice('phone')">📱 Telefono</button>
+      <button class="${S.device==='pc'?'on':''}" onclick="setDevice('pc')">💻 Computer</button>
+    </div>
+    ${colorPicker({title:'Colore', hint:'toccalo: la tua app cambia subito'})}
   </div>
-  <div class="mock-wrap">${S.device==='pc'?pcMockup():phoneMockup()}</div>`;
+  <div class="mock-wrap" style="--cy:${S.accent};--glow:0 0 24px ${S.accent}55">${S.device==='pc'?pcMockup():phoneMockup()}</div>`;
 }
 function refreshPreview(){ const a=$('#preview-area'); if(a) a.innerHTML=previewArea(); }
 function setPreviewView(id){ S.previewView=id; refreshPreview(); }
@@ -201,6 +236,7 @@ function buildConfig(){
   return {
     azienda: S.azienda.trim(),
     settore: S.settore,
+    accento: S.accent,
     moduli_base: MODULI_BASE.map(m=>m.id),
     moduli_extra: [...S.extra],
     generato: 'configuratore'
@@ -214,6 +250,7 @@ function buildText(){
     `NUOVA APP — configurazione`,
     `Azienda: ${c.azienda||'(da indicare)'}`,
     `Settore: ${settore?settore.nome:'—'}`,
+    `Colore accento: ${c.accento}`,
     `Moduli base: ${c.moduli_base.map(nm).join(', ')}`,
     `Moduli extra: ${c.moduli_extra.length?c.moduli_extra.map(nm).join(', '):'nessuno'}`,
     ``,
