@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Modula — La tua app aziendale, su misura</title>
+<meta name="description" content="Crea il gestionale della tua attività scegliendo solo i moduli che ti servono. Su misura, senza programmatori, su telefono e computer.">
+<meta name="theme-color" content="#080B10">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./landing.css">
+</head>
+<body>
+
+<!-- Effetti sfondo -->
+<div class="orbs" aria-hidden="true">
+  <div class="orb o1"></div>
+  <div class="orb o2"></div>
+  <div class="orb o3"></div>
+</div>
+<div class="bg-grid" aria-hidden="true"></div>
+
+<!-- ===== NAV ===== -->
+<nav class="nav">
+  <div class="wrap row">
+    <div class="logo"><span class="dot"></span>Modula</div>
+    <div class="links">
+      <a href="#come">Come funziona</a>
+      <a href="#prezzi">Prezzi</a>
+      <a href="#news">News</a>
+      <a href="#confronto">Confronto</a>
+    </div>
+    <div class="sp"></div>
+    <a class="btn pri" href="../configuratore/" style="font-size:13px;padding:9px 16px;border-radius:10px">Configurala →</a>
+  </div>
+</nav>
+
+<!-- ===== HERO ===== -->
+<header class="wrap hero">
+  <div>
+    <div class="hero-badge">✦ Gestionale su misura · Made in Italy</div>
+    <div class="eyebrow">App aziendale · senza programmatori</div>
+    <h1>La tua app aziendale,<br>costruita per <span class="g">come lavori tu</span>.</h1>
+    <p>Basta software rigidi e pieni di cose che non usi. Scegli il tuo settore, componi i moduli che ti servono e ottieni un gestionale tuo — col tuo nome, su telefono e computer.</p>
+    <div class="cta">
+      <a class="btn pri lg" href="#come">Guarda come funziona →</a>
+    </div>
+    <div class="trust">
+      <span><b>5 moduli base</b> sempre inclusi</span>
+      <span><b>Anteprima</b> prima di comprare</span>
+      <span><b>Nessun vincolo</b> tecnico</span>
+    </div>
+    <div class="hero-stats">
+      <div class="hs-item"><div class="hs-n">14</div><div class="hs-l">Moduli</div></div>
+      <div class="hs-sep"></div>
+      <div class="hs-item"><div class="hs-n">3+</div><div class="hs-l">Settori</div></div>
+      <div class="hs-sep"></div>
+      <div class="hs-item"><div class="hs-n">€0</div><div class="hs-l">Costi nascosti</div></div>
+      <div class="hs-sep"></div>
+      <div class="hs-item"><div class="hs-n">100%</div><div class="hs-l">Web app</div></div>
+    </div>
+  </div>
+  <div class="hero-device">
+    <div class="float-card fc1">
+      <span class="fc-dot"></span>
+      <div>
+        <div class="fc-title">Hub attivo</div>
+        <div class="fc-sub">3 eventi oggi</div>
+      </div>
+    </div>
+    <div class="float-card fc2">
+      <span style="font-size:16px">💰</span>
+      <div>
+        <div class="fc-title">+4.250 €</div>
+        <div class="fc-sub">questa settimana</div>
+      </div>
+    </div>
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="ph-top"><span class="dot"></span><div><div class="nm">La tua azienda</div><div class="s">GESTIONALE</div></div></div>
+      <div class="ph-body">
+        <div class="ph-title"><span class="a"></span>Hub</div>
+        <div class="ph-hub"><div class="h">Scrivi e l'app smista da sola…</div><div class="i">es. «appuntamento da Rossi domani alle 16»</div></div>
+        <div class="ph-stats">
+          <div class="ph-stat"><div class="n">4</div><div class="l">Oggi</div></div>
+          <div class="ph-stat"><div class="n">12</div><div class="l">Settimana</div></div>
+          <div class="ph-stat"><div class="n">3</div><div class="l">Da fare</div></div>
+        </div>
+        <div class="ph-card"><span class="ci">📅</span><div><div class="ct">Sopralluogo da Rossi</div><div class="cs">Oggi · 09:00</div></div></div>
+        <div class="ph-card"><span class="ci">💰</span><div><div class="ct">Incasso settimana</div><div class="cs">+ 4.250 €</div></div></div>
+      </div>
+      <div class="ph-nav">
+        <div class="nb on"><span class="i">⚡</span>Hub</div>
+        <div class="nb"><span class="i">📅</span>Cal</div>
+        <div class="nb"><span class="i">👥</span>Clienti</div>
+        <div class="nb"><span class="i">💰</span>Conti</div>
+        <div class="nb"><span class="i">☰</span>Altro</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ===== COS'È ===== -->
+<section class="wrap section center" id="cose">
+  <div class="fade-up">
+    <div class="eyebrow">Il progetto</div>
+    <div class="h2">Un gestionale non deve essere uguale per tutti</div>
+    <p class="sub">Un ristorante, un'impresa edile e un parrucchiere non lavorano allo stesso modo — perché dovrebbero usare lo stesso software? Modula parte da una <b style="color:var(--t1)">base solida</b> uguale per tutti e ci monta sopra <b style="color:var(--t1)">solo i moduli che servono a te</b>. Il risultato è un'app pulita, senza funzioni inutili, che parli la lingua della tua attività.</p>
+  </div>
+</section>
+
+<!-- ===== COME FUNZIONA ===== -->
+<section class="wrap section" id="come">
+  <div class="center fade-up"><div class="eyebrow">Come funziona</div><div class="h2">Dalla scelta alla tua app in 4 passi</div></div>
+  <div class="steps">
+    <div class="step fade-up"><div class="num">01</div><span class="ic">🎯</span><h3>Scegli il settore</h3><p>Dicci che attività fai: ti proponiamo subito i moduli più utili per te.</p></div>
+    <div class="step fade-up"><div class="num">02</div><span class="ic">🧩</span><h3>Componi i moduli</h3><p>Parti dalla base e aggiungi solo ciò che ti serve. Niente di più, niente di meno.</p></div>
+    <div class="step fade-up"><div class="num">03</div><span class="ic">👀</span><h3>Vedi l'anteprima</h3><p>Guardi subito la tua app — da telefono e da computer — prima di decidere.</p></div>
+    <div class="step fade-up"><div class="num">04</div><span class="ic">🚀</span><h3>Ricevi la tua app</h3><p>La prepariamo noi e te la consegniamo pronta, col tuo nome e i tuoi colori.</p></div>
+  </div>
+</section>
+
+<!-- ===== BASE + MODULI ===== -->
+<section class="wrap section center" id="base">
+  <div class="fade-up">
+    <div class="eyebrow">Il meccanismo</div>
+    <div class="h2">Una base solida. I moduli che vuoi.</div>
+    <p class="sub">Ogni app nasce dallo stesso cuore affidabile, poi la personalizzi tu.</p>
+  </div>
+  <div class="mech fade-up">
+    <div class="blk core">
+      <div class="lab">Base · sempre inclusa</div>
+      <div class="chips">
+        <span class="chip c">⚡ Hub</span><span class="chip c">📅 Calendario</span><span class="chip c">📝 Note</span><span class="chip c">👥 Clienti</span><span class="chip c">👷 Dipendenti</span>
+      </div>
+    </div>
+    <div class="plus">+</div>
+    <div class="blk">
+      <div class="lab">Moduli · scegli tu</div>
+      <div class="chips">
+        <span class="chip">💰 Conti</span><span class="chip">🔧 Manutenzioni</span><span class="chip">🏗 Cantieri</span><span class="chip">🗓️ Prenotazioni</span><span class="chip">📦 Magazzino</span><span class="chip">🏷️ Catalogo</span>
+      </div>
+    </div>
+    <div class="eq">=</div>
+    <div class="blk">
+      <div class="lab">La tua app</div>
+      <div class="chips"><span class="chip c">📱 Telefono + 💻 Computer</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ANTEPRIMA ===== -->
+<section class="wrap section center" id="anteprima">
+  <div class="fade-up">
+    <div class="eyebrow">Provala prima</div>
+    <div class="h2">Vedi la tua app prima di comprarla</div>
+    <p class="sub">Componi i moduli e vedi subito il risultato — telefono e computer, col nome della tua azienda. Senza impegno, in due minuti.</p>
+    <div style="margin-top:28px">
+      <a class="btn pri lg" href="../configuratore/">Prova il configuratore →</a>
+    </div>
+  </div>
+</section>
+
+<!-- ===== NEWS ===== -->
+<section class="wrap section" id="news">
+  <div class="center fade-up"><div class="eyebrow">Novità</div><div class="h2">Nuovi moduli e funzioni</div><p class="sub center">Modula cresce di continuo. Ecco le ultime novità.</p></div>
+  <div class="news" id="news-list"></div>
+</section>
+
+<!-- ===== PREZZI ===== -->
+<section class="wrap section" id="prezzi">
+  <div class="center fade-up"><div class="eyebrow">Prezzi</div><div class="h2">Trasparente e senza sorprese</div><p class="sub center">Un costo fisso per iniziare, poi paghi solo i moduli che hai scelto.</p></div>
+
+  <div class="price-main fade-up">
+    <div class="pm-card">
+      <div class="pm-label">Attivazione</div>
+      <div class="pm-price">490€</div>
+      <div class="pm-sub">una tantum</div>
+      <p class="pm-note">Configurazione, personalizzazione e consegna dell'app col tuo nome e i tuoi colori.</p>
+    </div>
+    <div class="pm-plus">+</div>
+    <div class="pm-card pm-hl">
+      <div class="pm-label">Canone mensile</div>
+      <div class="pm-price">39€<small>/mese</small></div>
+      <div class="pm-sub">5 moduli base inclusi</div>
+      <p class="pm-note">Hub, Calendario, Note, Clienti, Dipendenti — il cuore dell'app, sempre attivo.</p>
+    </div>
+    <div class="pm-plus">+</div>
+    <div class="pm-card">
+      <div class="pm-label">Moduli extra</div>
+      <div class="pm-price pm-from">da 35€<small>/mese</small></div>
+      <div class="pm-sub">per modulo aggiunto</div>
+      <p class="pm-note">Aggiungi solo ciò che ti serve, niente di più. Tre fasce in base alla complessità.</p>
+    </div>
+  </div>
+
+  <div class="tiers fade-up">
+    <div class="tier">
+      <div class="tier-label">Moduli semplici</div>
+      <div class="tier-price">+€35–40<small>/mese</small></div>
+      <p>Dati lineari e interfaccia diretta.<br>Es. Conti, Documenti, Turni, Catalogo.</p>
+    </div>
+    <div class="tier">
+      <div class="tier-label">Moduli standard</div>
+      <div class="tier-price">+€55–60<small>/mese</small></div>
+      <p>Logica media con più voci collegate.<br>Es. Prenotazioni, Magazzino, Report, Fidelity.</p>
+    </div>
+    <div class="tier">
+      <div class="tier-label">Moduli avanzati</div>
+      <div class="tier-price">+€75–90<small>/mese</small></div>
+      <p>Workflow complessi e più entità.<br>Es. Cantieri, Macchine, Fatture, Zone.</p>
+    </div>
+  </div>
+
+  <div class="custom-mod fade-up">
+    <div class="custom-mod-inner">
+      <div>
+        <div class="eyebrow" style="margin-bottom:6px">Serve qualcosa che non c'è?</div>
+        <div class="cmt">Moduli costruiti su misura</div>
+        <p class="pm-note" style="margin-top:8px;font-size:14px;max-width:480px">Ogni attività è diversa. Se hai bisogno di un modulo specifico, lo costruiamo per te. Il costo dipende dalle ore di lavoro e dalla complessità — nessuna sorpresa.</p>
+      </div>
+      <div class="custom-price">
+        <span>da</span>
+        <strong>100€</strong>
+        <span>a modulo</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="extras-hd fade-up"><div class="eyebrow" style="margin-top:40px">Risparmi</div></div>
+  <div class="discounts fade-up">
+    <div class="disc-card">
+      <div class="disc-ic">📦</div>
+      <div>
+        <div class="disc-name">Sconto volume</div>
+        <p class="disc-desc">Più moduli aggiungi, meno paghi per ognuno.</p>
+        <div class="disc-rows">
+          <div class="disc-row"><span>3–5 moduli extra</span><span class="disc-val">−10%</span></div>
+          <div class="disc-row"><span>6+ moduli extra</span><span class="disc-val">−15%</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="disc-card">
+      <div class="disc-ic">📅</div>
+      <div>
+        <div class="disc-name">Sconto annuale</div>
+        <p class="disc-desc">Paghi 12 mesi in anticipo e ottieni 2 mesi gratis — oltre il 16% di risparmio sul canone.</p>
+        <div class="disc-badge">2 MESI GRATIS</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="extras-hd fade-up"><div class="eyebrow" style="margin-top:28px">Servizi aggiuntivi</div></div>
+  <div class="extras fade-up">
+    <div class="extra-card">
+      <span class="extra-ic">📦</span>
+      <div class="extra-name">Migrazione dati</div>
+      <p class="extra-desc">Importiamo i tuoi clienti, prodotti e storico da Excel o dal tuo vecchio gestionale. Parti da zero, ma con i dati già dentro.</p>
+      <div class="extra-price">€100–250 <small>una tantum</small></div>
+    </div>
+    <div class="extra-card">
+      <span class="extra-ic">🌐</span>
+      <div class="extra-name">Dominio personalizzato</div>
+      <p class="extra-desc">La tua app su un indirizzo tutto tuo — es. <em>miazienda.it</em> invece di un link generico. Registrazione e configurazione incluse.</p>
+      <div class="extra-price">€50 <small>/anno</small></div>
+    </div>
+    <div class="extra-card">
+      <span class="extra-ic">💬</span>
+      <div class="extra-name">Notifiche WhatsApp</div>
+      <p class="extra-desc">Promemoria appuntamenti e aggiornamenti automatici ai tuoi clienti via WhatsApp. È necessario fornire un numero di telefono dedicato al servizio.</p>
+      <div class="extra-price">€19 <small>/mese</small></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== COMPETITOR ===== -->
+<section class="wrap section" id="confronto">
+  <div class="center fade-up"><div class="eyebrow">Confronto</div><div class="h2">Perché Modula</div><p class="sub center">Rispetto ai gestionali classici e alle app generiche fai-da-te.</p></div>
+  <div class="cmp fade-up">
+    <table>
+      <thead><tr><th>&nbsp;</th><th class="us">Modula</th><th>Gestionali classici</th><th>App generiche</th></tr></thead>
+      <tbody>
+        <tr><td>Su misura per il tuo settore</td><td class="c us yes">✓</td><td class="c no">✕</td><td class="c mid">~</td></tr>
+        <tr><td>Solo i moduli che ti servono</td><td class="c us yes">✓</td><td class="c no">✕</td><td class="c no">✕</td></tr>
+        <tr><td>Anteprima prima di comprare</td><td class="c us yes">✓</td><td class="c no">✕</td><td class="c no">✕</td></tr>
+        <tr><td>Col tuo nome e i tuoi colori</td><td class="c us yes">✓</td><td class="c mid">~</td><td class="c no">✕</td></tr>
+        <tr><td>Telefono + computer</td><td class="c us yes">✓</td><td class="c mid">~</td><td class="c yes">✓</td></tr>
+        <tr><td>Senza competenze tecniche</td><td class="c us yes">✓</td><td class="c no">✕</td><td class="c mid">~</td></tr>
+        <tr><td>Nuovi moduli di continuo</td><td class="c us yes">✓</td><td class="c mid">~</td><td class="c no">✕</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ===== CTA FINALE ===== -->
+<section class="wrap" style="padding-bottom:80px">
+  <div class="final fade-up">
+    <div class="h2" style="margin-bottom:12px">Pronto a creare la tua app?</div>
+    <p>Componi il tuo gestionale in due minuti e guarda subito com'è. Senza impegno.</p>
+    <a class="btn pri lg" href="../configuratore/">Crea la tua app →</a>
+  </div>
+</section>
+
+<!-- ===== FOOTER ===== -->
+<footer class="footer">
+  <div class="wrap row">
+    <div class="logo" style="font-size:16px"><span class="dot"></span>Modula</div>
+    <div class="sp"></div>
+    <a href="#come">Come funziona</a><a href="#prezzi">Prezzi</a><a href="#news">News</a><a href="#confronto">Confronto</a>
+  </div>
+  <div class="wrap" style="margin-top:14px">© 2026 Modula · gestionali su misura per la tua attività.</div>
+</footer>
+
+<script src="./news.js"></script>
+<script>
+(function(){
+  // Scroll animations
+  var obs = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting){ e.target.classList.add('vis'); obs.unobserve(e.target); }
+    });
+  }, { threshold:0.08, rootMargin:'0px 0px -44px 0px' });
+
+  document.querySelectorAll('.fade-up').forEach(function(el){ obs.observe(el); });
+
+  // News
+  var box = document.getElementById('news-list');
+  if(box && typeof NEWS !== 'undefined'){
+    box.innerHTML = NEWS.map(function(n){
+      return '<div class="ncard fade-up"><div class="meta"><span class="tag '+(n.tipo==='Nuovo modulo'?'nuovo':'funzione')+'">'+n.tipo+'</span><span class="date">'+n.data+'</span></div><h3>'+n.titolo+'</h3><p>'+n.testo+'</p></div>';
+    }).join('');
+    box.querySelectorAll('.fade-up').forEach(function(el){ obs.observe(el); });
+  }
+
+  // Nav: aggiungi classe scrolled
+  var nav = document.querySelector('.nav');
+  window.addEventListener('scroll', function(){
+    nav.style.background = window.scrollY > 20
+      ? 'rgba(8,11,16,.92)'
+      : 'rgba(8,11,16,.78)';
+  }, { passive:true });
+
+  // Stagger sui .step figli
+  document.querySelectorAll('.steps .step').forEach(function(el, i){
+    el.style.transitionDelay = (i * 90) + 'ms';
+  });
+})();
+</script>
+</body>
+</html>
