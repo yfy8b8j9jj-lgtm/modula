@@ -25,16 +25,18 @@ Base URL live: `https://yfy8b8j9jj-lgtm.github.io/modula`
 - Mini sito azienda — "Vetrina pubblica del cliente" — stato: scheletro — `/mini-sito/`
 
 **Fabbrica (qui su Claude)**
-- Fabbrica Modula — "Assemblaggio app qui su Claude" — stato: da strutturare — (nessun link)
-  - sotto-sezioni previste: Assemblaggio · Direzione · Laboratorio nuovi moduli
+- Fabbrica Modula — "Assemblaggio app qui su Claude" — stato: strutturata — `/FABBRICA/`
+  - modello C (Claude-driven): MANIFEST.js (mappa moduli→file) + RICETTA.md (processo)
+  - output app cliente in `/clienti/<slug>/` (sottocartella, online sotto /modula/clienti/)
 
 ### Resoconto
 Fatto: landing+effetti · hosting GitHub Pages · brand "Modula" definitivo · color picker per-azienda ·
-portale clienti · scheletro mini-sito.
-Prossimo: strutturare la Fabbrica. Rimandato: dominio personalizzato.
+portale clienti · scheletro mini-sito · Fabbrica strutturata (manifest+ricetta).
+Prossimo: assemblare il primo cliente · script generatore (opzione B) quando i clienti crescono.
+Rimandato: dominio personalizzato.
 
 ### Nuovi arrivi
-Accento colore per-azienda · Portale prenotazioni clienti finali · Scheletro mini sito · Tutto online.
+Fabbrica Modula (assemblaggio Claude-driven) · Accento colore per-azienda · Portale prenotazioni · Mini sito.
 
 ## Stati → colori pill
 online/pronto/template = success (verde) · scheletro = warning (ambra) · da fare/da strutturare = neutro.
