@@ -10,7 +10,8 @@ Quaderno append-only. **Prima** di supervisionare lo leggo; **dopo** aggiorno la
 - [ ] Nessun dato reale nel template/repo pubblico (regola Modula).
 - [ ] `CONSEGNA.md` presente con i TODO; voce aggiunta a `registro.json`.
 - [ ] Console locale senza errori; menù mostra solo i moduli giusti.
-- [ ] **Moduli "promessi/non assemblati"**: ogni modulo dichiarato in CONSEGNA come "in arrivo" (es. `fatture`) NON deve avere `<script>` in `app.html`, voce in `VIEWS`, né chiave nel dispatcher `R` (grep dello slug del modulo = nessun hit operativo). Evita un menù con voce morta o un `render… is not a function`.
+- [ ] **Moduli "promessi/non assemblati"**: ogni modulo dichiarato in CONSEGNA come "in arrivo" (es. `fatture`, `turni`) NON deve avere `<script>` in `app.html`, voce in `VIEWS`, né chiave nel dispatcher `R`. Grep sull'INTERO albero `grep -rin <slug> . --include='*.js' --include='*.css'` = 0 hit operativi (alcuni moduli stanno alla radice, non solo in modules-extra/). Evita un menù con voce morta o un `render… is not a function`.
+- [ ] **Asset 404 automatici**: estrarre ogni `src=`/`href=` da `app.html` e verificare che ogni file esista (`grep -oE '(src|href)="\./[^"]+"' app.html` + `test -e` su ogni path). Zero MISSING = ok.
 
 ## Priorità (regola di partenza)
 Sblocca per primo ciò che rende l'app **usabile dal cliente**: 1) Supabase, 2) logo, 3) moduli promessi.
@@ -18,3 +19,4 @@ Sblocca per primo ciò che rende l'app **usabile dal cliente**: 1) Supabase, 2) 
 ## Apprendimenti (cresce ad ogni revisione)
 <!-- formato: - [AAAA-MM-GG · cliente <slug>] controllo/pattern nuovo -->
 - [2026-06-22 · demo-impianti-verdi] Aggiunto controllo "moduli promessi/non assemblati": un modulo in catalogo ma non costruito (qui `fatture`) deve restare fuori da app.html/VIEWS/dispatcher, altrimenti voce di menù morta o `render is not a function`. Verificato con grep dello slug: 0 hit operativi = ok.
+- [2026-06-23 · ptek] Aggiunto controllo "verifica asset 404 automatica": estrarre ogni `src=`/`href=` da app.html e confermare che il file esista (`grep -oE` + test su ogni path). Su ptek: 22 asset, 0 mancanti. Inoltre il grep del modulo promesso va fatto sull'INTERO albero `.js`/`.css` (non solo app.html): qui alcuni moduli stanno alla radice (macchine.js, zone.js, zone-data.js), quindi `grep -rin <slug> . --include='*.js' --include='*.css'` = 0 hit conferma l'assenza reale di `turni`. Nota zsh: usare `grep -rin ... --include='...'` (gli `--include` separati di find/zsh danno "no matches found").

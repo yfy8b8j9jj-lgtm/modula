@@ -25,25 +25,26 @@ Base URL live: `https://yfy8b8j9jj-lgtm.github.io/modula`
 - Mini sito azienda — "Vetrina pubblica del cliente" — stato: scheletro — `/mini-sito/`
 
 **Fabbrica (qui su Claude)**
-- Fabbrica Modula — "Assemblaggio app qui su Claude" — stato: strutturata — `/FABBRICA/`
-  - hub `/FABBRICA/index.html` → 4 reparti, ognuno con un agente che si auto-migliora (livelli veri)
+- Fabbrica Modula — "Banco di regia INTERNO, gira su Claude" — stato: operativa — `/FABBRICA/` (NON online)
+  - **fuori dall'online**: esclusa da GitHub Pages via `_config.yml` (resta nel repo, versionata); pubblico = solo landing/configuratore/portale/app cliente
+  - **si apre come widget interattivo su Claude**: `FABBRICA/regia.widget.html` (incolli config → smistamento → "Avvia in Fabbrica" via sendPrompt → Claude esegue la catena)
   - **flusso ordine:** config → 🧭 Dirigenza smista → 🛠 Assemblaggio (moduli pronti) + 🧪 Laboratorio (da creare) → app → 🔄 Conversione dati (opz.)
-  - **Direzione** (il Direttore · `direzione.html`): ENTRATA — accetta la config, classifica i moduli e smista (genera i prompt per Assemblaggio e Laboratorio); poi registro clienti, stato, TODO, QA
-  - **Assemblaggio** (l'Assemblatore · `assemblaggio.html`): console config→app · MANIFEST.js + RICETTA.md
-  - **Laboratorio** (l'Inventore · `laboratorio.html`): riceve i moduli "da creare", Loris contatta l'azienda e li costruisce → pronto
-  - **Conversione** (il Convertitore · `conversione.html`): opzionale, su scelta cliente — converte i file del vecchio gestionale → formato Modula (skill `importa-dati`)
-  - agenti reali in `.claude/agents/` (fabbrica-assemblatore/direttore/inventore/convertitore); quaderni in `FABBRICA/agenti/<id>/`
-  - import dati: skill `importa-dati` (adattata da ptek) → file `modula-import.json`; l'app (core.js) accetta modula-import e il vecchio ptek-import
-  - output app cliente in `/clienti/<slug>/` (sottocartella, online sotto /modula/clienti/)
+  - 4 reparti, ognuno con un agente (subagent reale in `.claude/agents/`) che si auto-migliora (quaderno MEMORIA + metriche in `FABBRICA/agenti/<id>/`): Direzione (il Direttore, entrata), Assemblaggio (l'Assemblatore), Laboratorio (l'Inventore), Conversione (il Convertitore)
+  - import dati: skill `importa-dati` (adattata da ptek) → file `modula-import.json`; core.js accetta modula-import e il vecchio ptek-import
+  - **modalità DEMO**: ogni app assemblata, finché Supabase è segnaposto, parte con dati di esempio navigabile (vetrina) → core.js
+  - trigger operativo: «creiamo l'app per X» → apro `clienti/<slug>/ORDINE.md` + regia + eseguo la catena
+  - output app cliente in `/clienti/<slug>/` (online sotto /modula/clienti/); demo: `clienti/demo-impianti-verdi/`
 
 ### Resoconto
-Fatto: landing+effetti · hosting GitHub Pages · brand "Modula" definitivo · color picker per-azienda ·
-portale clienti · scheletro mini-sito · Fabbrica strutturata (manifest+ricetta).
-Prossimo: assemblare il primo cliente · script generatore (opzione B) quando i clienti crescono.
-Rimandato: dominio personalizzato.
+Fatto: landing+effetti · hosting GitHub Pages · brand "Modula" · configuratore · portale · mini-sito ·
+Fabbrica a 4 reparti con agenti auto-miglioranti (subagent reali) · orchestrazione Dirigenza · reparto
+Conversione (skill importa-dati) · modalità demo/vetrina nelle app · Fabbrica resa interna (widget regia su Claude).
+Prossimo: simulare/assemblare clienti veri dalla regia · costruire moduli "in arrivo" in Laboratorio.
+Rimandato: dominio personalizzato · generatore in-browser (scartato: tutto su Claude).
 
 ### Nuovi arrivi
-Fabbrica Modula (assemblaggio Claude-driven) · Accento colore per-azienda · Portale prenotazioni · Mini sito.
+Widget regia Fabbrica (interattivo, su Claude) · modalità demo nelle app cliente · vetrina demo in landing ·
+reparto Conversione · orchestrazione automatica Dirigenza→reparti.
 
 ## Stati → colori pill
 online/pronto/template = success (verde) · scheletro = warning (ambra) · da fare/da strutturare = neutro.

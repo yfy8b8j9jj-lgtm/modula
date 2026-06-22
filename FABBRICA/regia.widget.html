@@ -1,0 +1,116 @@
+<!-- ============================================================
+     FABBRICA — WIDGET REGIA (banco interno, da renderizzare con show_widget di visualize)
+     Uso: quando Loris dice "apri la Fabbrica / la regia", Claude legge questo file
+     e lo passa a show_widget (title: fabbrica_regia). Loris incolla la config nel campo
+     e preme "Avvia in Fabbrica": il widget chiama sendPrompt() -> arriva a Claude come
+     messaggio -> Claude esegue la catena (smista -> assembla -> registra -> link).
+     Tema: usa le CSS var del host visualize (non è un sito a sé).
+     ============================================================ -->
+<div style="font-family:var(--font-sans);color:var(--color-text-primary);">
+
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:2px;">
+    <div style="width:42px;height:42px;border-radius:var(--border-radius-md);background:var(--color-background-secondary);display:flex;align-items:center;justify-content:center;color:var(--color-text-primary);font-size:22px;"><i class="ti ti-building-factory-2" aria-hidden="true"></i></div>
+    <div style="flex:1;">
+      <div style="font-size:11px;letter-spacing:1.5px;color:var(--color-text-tertiary);">BANCO DI REGIA · INTERNO</div>
+      <h2 style="margin:1px 0 0;">Fabbrica Modula</h2>
+    </div>
+    <div id="fb-phase" style="font-size:12px;color:var(--color-text-tertiary);text-align:right;">in attesa di un ordine</div>
+  </div>
+
+  <!-- pipeline compatta -->
+  <div id="fb-pipe" style="display:flex;gap:6px;margin:14px 0 16px;"></div>
+
+  <!-- input ordine -->
+  <div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1rem 1.1rem;">
+    <label style="display:block;font-size:12px;color:var(--color-text-secondary);margin-bottom:7px;">Configurazione del cliente <span style="color:var(--color-text-tertiary);">— incolla il testo del configuratore o la riga JSON</span></label>
+    <textarea id="fb-in" spellcheck="false" placeholder='{"azienda":"...","settore":"...","accento":"#...","moduli_extra":[...]}' style="width:100%;min-height:84px;box-sizing:border-box;background:var(--color-background-secondary);border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);color:var(--color-text-primary);font-family:var(--font-mono,monospace);font-size:12.5px;line-height:1.6;padding:11px 13px;resize:vertical;outline:none;"></textarea>
+    <div style="display:flex;gap:8px;margin-top:11px;align-items:center;flex-wrap:wrap;">
+      <button id="fb-analyze" style="font-size:13px;font-weight:500;padding:9px 16px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:transparent;color:var(--color-text-primary);cursor:pointer;display:inline-flex;align-items:center;gap:6px;"><i class="ti ti-eye" aria-hidden="true"></i> Anteprima smistamento</button>
+      <button id="fb-go" style="font-size:13px;font-weight:500;padding:9px 18px;border-radius:var(--border-radius-md);border:none;background:var(--color-text-info);color:var(--color-background-primary);cursor:pointer;display:inline-flex;align-items:center;gap:6px;"><i class="ti ti-player-play" aria-hidden="true"></i> Avvia in Fabbrica</button>
+      <button id="fb-demo" style="font-size:12px;padding:9px 12px;border-radius:var(--border-radius-md);border:none;background:transparent;color:var(--color-text-tertiary);cursor:pointer;">esempio</button>
+      <span id="fb-msg" style="font-size:12px;color:var(--color-text-tertiary);margin-left:auto;"></span>
+    </div>
+  </div>
+
+  <div id="fb-plan" style="margin-top:14px;"></div>
+</div>
+
+<script>
+(function(){
+  var BASE=['hub','cal','notes','notif','clients','emps'];
+  var PRONTI=['conti','man','sites','pellet','macchine','zone'];
+  var ARRIVO=['prenota','magazzino','catalogo','fatture','documenti','report','fidelity','turni'];
+  var NM={hub:'Hub',cal:'Calendario',notes:'Note',notif:'Notifiche',clients:'Clienti',emps:'Personale',conti:'Conti',man:'Manutenzioni',sites:'Cantieri',pellet:'Consegne',macchine:'Macchine',zone:'Zone',prenota:'Prenotazioni',magazzino:'Magazzino',catalogo:'Catalogo',fatture:'Fatture',documenti:'Documenti',report:'Report',fidelity:'Fidelity',turni:'Turni'};
+  var STAGES=[{k:'dir',ic:'ti-compass',n:'Dirigenza'},{k:'asm',ic:'ti-tool',n:'Assemblaggio'},{k:'lab',ic:'ti-flask',n:'Laboratorio'},{k:'cnv',ic:'ti-refresh',n:'Conversione'}];
+  var C=function(v){return 'var(--color-'+v+')';};
+  var $=function(id){return document.getElementById(id);};
+  var esc=function(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});};
+
+  function pipe(active){
+    $('fb-pipe').innerHTML=STAGES.map(function(s,i){
+      var on=active&&active.indexOf(s.k)>=0;
+      var col=on?C('text-info'):C('text-tertiary');
+      return '<div style="flex:1;display:flex;align-items:center;gap:7px;padding:8px 10px;border:0.5px solid '+(on?C('border-info'):C('border-tertiary'))+';border-radius:var(--border-radius-md);background:'+(on?C('background-info'):'transparent')+';">'
+        +'<i class="ti '+s.ic+'" style="color:'+col+';font-size:16px;" aria-hidden="true"></i>'
+        +'<span style="font-size:12px;color:'+(on?C('text-info'):C('text-secondary'))+';">'+s.n+'</span></div>'
+        +(i<STAGES.length-1?'<i class="ti ti-chevron-right" style="color:'+C('text-tertiary')+';align-self:center;font-size:14px;" aria-hidden="true"></i>':'');
+    }).join('');
+  }
+
+  function parse(){
+    var m=$('fb-in').value.match(/\{[\s\S]*\}/); if(!m) throw new Error('Nessuna config JSON trovata.');
+    var c=JSON.parse(m[0]);
+    c.moduli_extra=Array.isArray(c.moduli_extra)?c.moduli_extra:[];
+    c.azienda=c.azienda||''; c.settore=c.settore||'';
+    c.accento=/^#?[0-9a-fA-F]{3,8}$/.test(String(c.accento||''))?(String(c.accento)[0]==='#'?c.accento:'#'+c.accento):'#6EE7B7';
+    return c;
+  }
+  function classify(c){
+    return {
+      pronti:c.moduli_extra.filter(function(x){return PRONTI.indexOf(x)>=0;}),
+      crea:c.moduli_extra.filter(function(x){return ARRIVO.indexOf(x)>=0;}),
+      ignoti:c.moduli_extra.filter(function(x){return PRONTI.indexOf(x)<0&&ARRIVO.indexOf(x)<0;})
+    };
+  }
+  function chip(id){return '<span style="font-family:var(--font-mono,monospace);font-size:11px;padding:2px 8px;border-radius:var(--border-radius-md);background:var(--color-background-secondary);color:var(--color-text-secondary);">'+esc(NM[id]||id)+'</span>';}
+
+  function plan(c,k){
+    var split=k.crea.length>0;
+    var lane=function(title,sub,col,ids,empty){
+      return '<div style="flex:1;min-width:180px;border:0.5px solid '+C('border-tertiary')+';border-left:3px solid '+col+';border-radius:var(--border-radius-lg);background:var(--color-background-primary);padding:12px 14px;">'
+        +'<div style="font-weight:500;font-size:13.5px;color:'+col+';">'+title+'</div>'
+        +'<div style="font-size:11.5px;color:'+C('text-tertiary')+';margin:2px 0 8px;">'+sub+'</div>'
+        +'<div style="display:flex;flex-wrap:wrap;gap:5px;">'+(ids.length?ids.map(chip).join(''):'<span style="font-size:12px;color:'+C('text-tertiary')+';">'+empty+'</span>')+'</div></div>';
+    };
+    $('fb-plan').innerHTML=
+      '<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:10px 4px 14px;">'
+        +'<div><div style="font-size:11px;color:'+C('text-tertiary')+';">AZIENDA</div><div style="font-size:16px;font-weight:500;">'+esc(c.azienda||'—')+'</div></div>'
+        +'<div><div style="font-size:11px;color:'+C('text-tertiary')+';">SETTORE</div><div style="font-size:14px;">'+esc(c.settore||'—')+'</div></div>'
+        +'<div><div style="font-size:11px;color:'+C('text-tertiary')+';">ACCENTO</div><div style="font-size:14px;display:flex;align-items:center;gap:6px;"><span style="width:14px;height:14px;border-radius:4px;background:'+esc(c.accento)+';display:inline-block;"></span>'+esc(c.accento)+'</div></div>'
+        +'<div style="margin-left:auto;font-size:12px;color:'+(split?C('text-warning'):C('text-success'))+';">'+(split?'ordine SPLIT — parte in Laboratorio':'ordine diretto — tutto pronto')+'</div>'
+      +'</div>'
+      +'<div style="display:flex;gap:12px;flex-wrap:wrap;">'
+        +lane('Assemblaggio','monta subito (pronti)',C('text-info'),BASE.concat(k.pronti),'')
+        +lane('Laboratorio',split?'da creare':'niente da creare',C('text-warning'),k.crea,'tutto già pronto')
+      +'</div>'
+      +(k.ignoti.length?'<div style="font-size:12px;color:'+C('text-warning')+';margin-top:8px;">Moduli non riconosciuti: '+k.ignoti.join(', ')+'</div>':'');
+  }
+
+  function analyze(){
+    try{var c=parse();}catch(e){$('fb-msg').textContent='⚠ '+e.message;$('fb-msg').style.color=C('text-danger');return null;}
+    $('fb-msg').textContent=''; plan(c,classify(c)); return c;
+  }
+
+  $('fb-analyze').onclick=analyze;
+  $('fb-demo').onclick=function(){$('fb-in').value='{"azienda":"Bar Centrale","settore":"ristorazione","accento":"#F472B6","moduli_extra":["conti","prenota","fidelity"]}';analyze();};
+  $('fb-go').onclick=function(){
+    var c=analyze(); if(!c)return;
+    var jsonLine=JSON.stringify({azienda:c.azienda,settore:c.settore,accento:c.accento,moduli_extra:c.moduli_extra,generato:'configuratore'});
+    var msg='creiamo l\'app per «'+(c.azienda||'azienda')+'» — esegui tutta la catena della Fabbrica (smista, assembla, registra) e dammi il link. Config: '+jsonLine;
+    pipe(['dir']); $('fb-phase').textContent='ordine inviato in Fabbrica…';
+    $('fb-msg').textContent='✓ inviato a Claude'; $('fb-msg').style.color=C('text-success');
+    if(window.sendPrompt){sendPrompt(msg);} else {$('fb-msg').textContent='(anteprima: sendPrompt non disponibile qui)';}
+  };
+  pipe([]);
+})();
+</script>

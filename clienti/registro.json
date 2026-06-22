@@ -20,6 +20,26 @@
       ],
       "consegna": "clienti/demo-impianti-verdi/CONSEGNA.md",
       "aggiornato": "2026-06-22"
+    },
+    {
+      "slug": "ptek",
+      "azienda": "ptek",
+      "settore": "impianti",
+      "accento": "#FB923C",
+      "origine": "configuratore",
+      "moduli_base": ["hub", "cal", "notes", "notif", "clients", "emps"],
+      "moduli_extra": ["man", "macchine", "sites", "zone", "conti", "pellet"],
+      "moduli_promessi": ["turni"],
+      "qa": "passata",
+      "stato": "struttura pronta — in attesa di collegamento dati",
+      "todo_aperti": [
+        "Supabase: compilare __SUPABASE_URL__ e __SUPABASE_ANON_KEY__ in core/core.js",
+        "Push (VAPID): compilare __VAPID_PUBLIC_KEY__ in core/core.js",
+        "Logo: ricevere logo.png e impostare BRAND.logo='./logo.png' in core/core.js",
+        "Modulo Turni promesso: da costruire (Inventore), secondo rilascio"
+      ],
+      "consegna": "clienti/ptek/CONSEGNA.md",
+      "aggiornato": "2026-06-23"
     }
   ]
 }

@@ -5,9 +5,9 @@
   "icona": "🛠",
   "colore": "#6EE7B7",
   "pagina": "assemblaggio.html",
-  "livello": 1,
-  "esperienza": 13,
-  "contatori": { "clienti serviti": 1, "regole apprese": 1 },
-  "ultima_lezione": "Verifica coerenza senza browser: loop su dispatcher (render*) + node --check core.js + curl su ogni asset relativo. man/conti non hanno css.",
-  "ultima_attivita": "2026-06-22"
+  "livello": 2,
+  "esperienza": 26,
+  "contatori": { "clienti serviti": 2, "regole apprese": 2 },
+  "ultima_lezione": "Se il cliente sceglie TUTTI gli extra pronti, il template di root li ha gia tutti: zero potatura, solo copia + BRAND + accento. La potatura serve solo quando si scartano moduli.",
+  "ultima_attivita": "2026-06-23"
 }
