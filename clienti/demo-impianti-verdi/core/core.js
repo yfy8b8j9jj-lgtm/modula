@@ -7,7 +7,11 @@
    Sostituire i due segnaposto con le credenziali del proprio progetto. */
 const SB_URL='__SUPABASE_URL__';        /* es. https://xxxx.supabase.co */
 const SB_KEY='__SUPABASE_ANON_KEY__';   /* chiave pubblica (anon/publishable) */
-const sb=window.supabase.createClient(SB_URL,SB_KEY);
+/* VETRINA/DEMO: finché le credenziali sono segnaposto (o assenti) l'app parte in
+   modalità demo — dati di esempio, nessun backend — così è subito navigabile.
+   Appena si inseriscono URL+chiave reali, riparte normale (login + Supabase). */
+const DEMO=(/^__/.test(SB_URL))||!SB_URL;
+const sb=DEMO?null:window.supabase.createClient(SB_URL,SB_KEY);
 
 /* ─── BRAND: ogni azienda mette QUI il SUO nome e logo (template neutro, nessun marchio) ─── */
 const BRAND={
@@ -124,7 +128,7 @@ function rebuildSnapshot(){const r=dbRows();for(const k of UP_ORDER)snapRows(k,r
 
 /* ---------- sync: diff e push ---------- */
 let syncTimer=null,syncing=false,syncDirty=false;
-function save(){syncDirty=true;clearTimeout(syncTimer);syncTimer=setTimeout(syncNow,300);}
+function save(){if(DEMO)return;syncDirty=true;clearTimeout(syncTimer);syncTimer=setTimeout(syncNow,300);}
 async function syncNow(){
   if(!S.session)return;
   if(syncing){syncDirty=true;return;}
@@ -441,7 +445,7 @@ const isOwner=()=>{const m=me();return !!(m&&m.isOwner);};
 const can=p=>isOwner()||(me()&&me().perms&&me().perms.includes(p));
 const randCode=(len=5)=>{const A='ABCDEFGHJKMNPQRSTUVWXYZ23456789';const a=new Uint8Array(len);crypto.getRandomValues(a);return Array.from(a,x=>A[x%A.length]).join('');};
 const genInvite=n=>(norm(n).replace(/[^a-z]/g,'').slice(0,5).toUpperCase()||'USER')+'-'+randCode(5);
-async function logout(){try{await sb.auth.signOut();}catch(e){}S=blank();authMode='login';closeSheet();renderLock();}
+async function logout(){if(DEMO){toast('Demo: in un\'app reale qui esci dall\'account');return;}try{await sb.auth.signOut();}catch(e){}S=blank();authMode='login';closeSheet();renderLock();}
 function nav(v){view=v;render();window.scrollTo(0,0);}
 /* barra in basso (mobile) personalizzabile — salvata sul dispositivo, una per utente */
 const NAV_DEFAULT=['hub','cal','man','pellet','sites'];
@@ -1215,8 +1219,41 @@ async function checkUpdate(){
 }
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')checkUpdate();});
 
+/* ================= DEMO / VETRINA ================= */
+function demoBoot(){
+  const oid=uid(),e2=uid(),c1=uid(),c2=uid(),c3=uid();const t=todayIso();const now=Date.now();
+  S=blank();
+  S.employees=[
+    {id:oid,name:'Tu (demo)',role:'Titolare',phone:'',perms:[],isOwner:true,active:true},
+    {id:e2,name:'Luca Bianchi',role:'Tecnico',phone:'333 0102030',perms:['man','clients','cal','conti'],isOwner:false,active:true}
+  ];
+  S.session={empId:oid};
+  S.clients=[
+    {id:c1,name:'Mario Rossi',firstName:'Mario',lastName:'Rossi',phone:'333 1234567',street:'Via Roma',streetNo:'3',cap:'12010',town:'Demonte',email:'',group:'A',plant:'Caldaia a pellet',notes:'Cliente storico',blocked:false,created:now},
+    {id:c2,name:'Bar Centrale',firstName:'',lastName:'Bar Centrale',phone:'0171 900111',street:'Piazza Garibaldi',streetNo:'7',cap:'12011',town:'Borgo',email:'info@barcentrale.demo',group:'B',plant:'Stufa a pellet',notes:'',blocked:false,created:now},
+    {id:c3,name:'Verdi Impianti snc',firstName:'',lastName:'Verdi Impianti snc',phone:'0171 552200',street:'Via Industria',streetNo:'22',cap:'12012',town:'Boves',email:'',group:'A',plant:'',notes:'Preventivo in corso',blocked:false,created:now}
+  ];
+  S.appointments=[
+    {id:uid(),title:'Sopralluogo nuovo impianto',clientId:c1,employeeId:e2,employees:[e2],date:t,time:'09:30',done:false,via:'demo',created:now},
+    {id:uid(),title:'Preventivo caldaia',clientId:c3,employeeId:oid,employees:[oid],date:t,time:'15:00',done:false,via:'demo',created:now}
+  ];
+  S.maintenances=[
+    {id:uid(),title:'Manutenzione caldaia annuale',clientId:c1,employeeId:e2,employees:[e2],date:t,time:'',status:'programmata',type:'caldaia',price:120,notes:'',via:'demo',created:now},
+    {id:uid(),title:'Controllo stufa a pellet',clientId:c2,employeeId:null,employees:[],date:'',status:'da_fare',type:'stufa',price:null,notes:'',via:'demo',created:now}
+  ];
+  S.notes=[{id:uid(),text:'Ordinare ricambi caldaia per Rossi',clientId:c1,date:t,pinned:true,via:'demo',created:now}];
+  S.expenses=[
+    {id:uid(),date:t,category:'Carburante',amount:85,note:'Furgone',siteId:null,recur:0,created:now},
+    {id:uid(),date:t,category:'Ricambi',amount:240,note:'Caldaie',siteId:null,recur:0,created:now}
+  ];
+  rebuildSnapshot();
+  view='hub';render();
+  setTimeout(()=>{try{toast('🎬 Modalità demo — dati di esempio. Prova a cliccare tutto.');}catch(e){}},700);
+}
+
 /* ================= BOOT ================= */
 (async()=>{
+  if(DEMO){ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',demoBoot);else demoBoot(); return; }
   try{
     const{data:{session}}=await sb.auth.getSession();
     if(session){postAuth();}else{renderLock();}
