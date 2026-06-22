@@ -11,9 +11,9 @@ const sb=window.supabase.createClient(SB_URL,SB_KEY);
 
 /* ─── BRAND: ogni azienda mette QUI il SUO nome e logo (template neutro, nessun marchio) ─── */
 const BRAND={
-  name:'',      /* nome azienda (login + barra in alto). Vuoto = "La tua app" */
-  tagline:'',   /* sottotitolo opzionale, es. il settore */
-  logo:''       /* percorso del logo, es. './logo.png'. Vuoto = mostra solo il nome */
+  name:'Demo Impianti Verdi',  /* nome azienda (login + barra in alto) */
+  tagline:'Impianti',          /* sottotitolo opzionale, es. il settore */
+  logo:''                      /* percorso del logo, es. './logo.png'. Vuoto = mostra solo il nome */
 };
 
 const APP_VERSION='2026.06.19-135159';
@@ -429,9 +429,6 @@ const VIEWS=[
   {id:'notes',ic:'📝',label:'Note'},
   {id:'notif',ic:'🔔',label:'Notifiche'},
   {id:'man',ic:'🔧',label:'Manut.'},
-  {id:'pellet',ic:'🪵',label:'Pellet'},
-  {id:'sites',ic:'🏗',label:'Cantieri'},
-  {id:'macchine',ic:'⚙️',label:'Macchine'},
   {id:'clients',ic:'👥',label:'Clienti'},
   {id:'zone',ic:'🗺️',label:'Zone'},
   {id:'conti',ic:'💰',label:'Conti'},
@@ -874,7 +871,7 @@ function render(){
   S.speaker=S.session.empId;
   renderNav();
   $('#todaypill').textContent=GG[new Date().getDay()].slice(0,3)+' '+new Date().getDate()+' '+MESI[new Date().getMonth()].slice(0,3);
-  const R={hub:window.renderHub,cal:window.renderCal,notes:window.renderNotes,notif:window.renderNotif,man:window.renderMan,pellet:window.renderPellet,sites:window.renderSites,macchine:window.renderMacchine,clients:window.renderClients,zone:window.renderZone,conti:window.renderConti,emps:window.renderEmps};
+  const R={hub:window.renderHub,cal:window.renderCal,notes:window.renderNotes,notif:window.renderNotif,man:window.renderMan,clients:window.renderClients,zone:window.renderZone,conti:window.renderConti,emps:window.renderEmps};
   $('#main').innerHTML='';(R[view]||window.renderHub)();
   if(view==='notif'&&notifTab==='chat'){const sc=$('#chatscroll');if(sc)sc.scrollTop=sc.scrollHeight;}
 }

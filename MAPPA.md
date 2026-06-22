@@ -26,7 +26,14 @@ Base URL live: `https://yfy8b8j9jj-lgtm.github.io/modula`
 
 **Fabbrica (qui su Claude)**
 - Fabbrica Modula — "Assemblaggio app qui su Claude" — stato: strutturata — `/FABBRICA/`
-  - modello C (Claude-driven): MANIFEST.js (mappa moduli→file) + RICETTA.md (processo)
+  - hub `/FABBRICA/index.html` → 4 reparti, ognuno con un agente che si auto-migliora (livelli veri)
+  - **flusso ordine:** config → 🧭 Dirigenza smista → 🛠 Assemblaggio (moduli pronti) + 🧪 Laboratorio (da creare) → app → 🔄 Conversione dati (opz.)
+  - **Direzione** (il Direttore · `direzione.html`): ENTRATA — accetta la config, classifica i moduli e smista (genera i prompt per Assemblaggio e Laboratorio); poi registro clienti, stato, TODO, QA
+  - **Assemblaggio** (l'Assemblatore · `assemblaggio.html`): console config→app · MANIFEST.js + RICETTA.md
+  - **Laboratorio** (l'Inventore · `laboratorio.html`): riceve i moduli "da creare", Loris contatta l'azienda e li costruisce → pronto
+  - **Conversione** (il Convertitore · `conversione.html`): opzionale, su scelta cliente — converte i file del vecchio gestionale → formato Modula (skill `importa-dati`)
+  - agenti reali in `.claude/agents/` (fabbrica-assemblatore/direttore/inventore/convertitore); quaderni in `FABBRICA/agenti/<id>/`
+  - import dati: skill `importa-dati` (adattata da ptek) → file `modula-import.json`; l'app (core.js) accetta modula-import e il vecchio ptek-import
   - output app cliente in `/clienti/<slug>/` (sottocartella, online sotto /modula/clienti/)
 
 ### Resoconto

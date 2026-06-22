@@ -6,8 +6,13 @@ Il processo che **Claude** esegue per trasformare la config di un cliente
 Modello scelto: **C — Claude-driven** (io sono il motore; il [MANIFEST.js](MANIFEST.js) è la mappa).
 Output: **sottocartella nello stesso repo** → online su `…/modula/clienti/<slug>/`.
 
+Questa ricetta è il manuale del reparto **Assemblaggio** e del suo agente **l'Assemblatore**
+(subagent `fabbrica-assemblatore`). L'agente segue il proprio protocollo di auto-miglioramento:
+**prima** legge `agenti/assemblatore/MEMORIA.md`, **dopo** ci scrive cosa ha imparato e aggiorna
+`agenti/assemblatore/metriche.json`. Vedi [agenti/assemblatore/AGENTE.md](agenti/assemblatore/AGENTE.md).
+
 > Come si avvia: incolli a Claude la config (anche solo la riga JSON) e dici
-> *"assembla questo cliente"*. Il resto è questa ricetta.
+> *"assembla questo cliente"* (o invochi il subagent `fabbrica-assemblatore`). Il resto è questa ricetta.
 
 ---
 
