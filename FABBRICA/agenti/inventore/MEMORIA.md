@@ -5,12 +5,20 @@ Quaderno append-only. **Prima** di costruire lo leggo; **dopo** ci lascio la ric
 ## Coda moduli da costruire (da MANIFEST.inArrivo)
 prenota · magazzino · catalogo · fatture · documenti · report · fidelity · turni
 
-## Ricetta-base "nuovo modulo" (di partenza)
-1. Crea la cartella/file (in `modules-extra/<id>/<id>.js`, oppure root se ha asset propri come macchine/zone).
-2. Scrivi `function render<Nome>(){ ... }` che dipinge in `#main` usando gli helper del core (`esc`, `S`, `save`, ecc.).
-3. Registra: voce in `VIEWS`, coppia nel dispatcher `R`, riga nel `MANIFEST.extra`, e `stato:'pronto'` nel catalogo.
-4. Se ha dati propri: aggiungi la tabella nello stato `S` (`blank()`), in `MAPS`, `TBL`, `UP_ORDER`/`DEL_ORDER`.
-5. Solo struttura + segnaposto: nessun dato reale.
+## Catalogo settori → moduli su misura (cosa proporre quando Loris chiede "cosa facciamo")
+Fonte autorevole: **[../../SETTORI-MODULI.md](../../SETTORI-MODULI.md)** (lista spuntabile, 15 settori).
+Quando apro il laboratorio senza un modulo nominato, **propongo prima i 7 moduli ♻️ trasversali**
+(`interventi` · `contratti-man` · `scadenziario` · `impianti` · `mezzi` · `preventivi` · `ricorrenze`):
+sbloccano ~70% dei settori. I moduli mono-settore (`fgas`, `libretto`, `presidi`, `sal`…) si fanno quando
+arriva il cliente reale di quel ramo. Dopo aver portato un modulo a `pronto` → **spunto la casella** nel catalogo.
+
+## Ricetta-base "nuovo modulo" → ora è il CONTRATTO MODULO
+La ricetta autorevole vive in **[../../LABORATORIO.md](../../LABORATORIO.md)** (Contratto Modulo, agganci A–F)
++ scheletro copia-incolla **[../../TEMPLATE-modulo.js](../../TEMPLATE-modulo.js)**. Sintesi: ogni modulo nasce
+già agganciato a **Hub** (`<id>HubCardHTML()` + guard in hub.js), agli **altri moduli** (`cName/eName/byId/nav`),
+e alla **memoria** (`blank()`+`MAPS`+`TBL`+`UP_ORDER/DEL_ORDER`+`loadAll/dbRows`+`save()`+seed in `demoBoot`).
+Registrazione id coerente ovunque (VIEWS, dispatcher, MANIFEST.extra, catalogo, `<script>` in app.html).
+Trigger di Loris: **"apri laboratorio"** → entro build-ready (leggo questa MEMORIA + `inArrivo`, carico il Contratto).
 
 ## Trabocchetti noti
 - Gli `id` devono combaciare in catalogo, MANIFEST, VIEWS e dispatcher: un disallineamento = menù rotto.

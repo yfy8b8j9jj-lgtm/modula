@@ -6,7 +6,7 @@ const ALL_MODS = [...MODULI_BASE, ...MODULI_EXTRA];
 const modById = id => byId(ALL_MODS, id);
 
 const STEPS = ['Azienda','Settore','Moduli','Anteprima'];
-const S = { step:1, azienda:'', settore:null, extra:new Set(), previewView:'hub', device:'phone', accent:'#6EE7B7' };
+const S = { step:1, azienda:'', settore:null, extra:new Set(), richiesta:'', previewView:'hub', device:'phone', accent:'#6EE7B7' };
 
 /* ---------------- color picker (accento per-azienda) ---------------- */
 const COLORI = [
@@ -93,17 +93,18 @@ function step2(){
 }
 function pickSettore(id){
   S.settore=id;
-  // pre-seleziona i moduli proposti del settore
+  // pre-seleziona i moduli proposti del settore (solo quelli già pronti)
   const st=byId(SETTORI,id);
-  if(st) st.proposti.forEach(m=>S.extra.add(m));
+  if(st) st.proposti.forEach(m=>{ const mod=modById(m); if(mod && mod.stato!=='arrivo') S.extra.add(m); });
   render();
 }
 
 /* ---------------- STEP 3 — moduli ---------------- */
 function step3(){
   const st = byId(SETTORI, S.settore) || {proposti:[]};
-  const proposti = MODULI_EXTRA.filter(m=>st.proposti.includes(m.id));
-  const altri    = MODULI_EXTRA.filter(m=>!st.proposti.includes(m.id));
+  const pronti   = MODULI_EXTRA.filter(m=>m.stato!=='arrivo');
+  const proposti = pronti.filter(m=>st.proposti.includes(m.id));
+  const altri    = pronti.filter(m=>!st.proposti.includes(m.id));
   const tile = (m,extra=true)=>`
     <div class="tile ${extra?(S.extra.has(m.id)?'on':''):'locked'} ${extra&&m.stato==='arrivo'?'dim':''}" ${extra?`onclick="toggleExtra('${m.id}')"`:''}>
       <span class="ic">${m.ic}</span>
@@ -124,14 +125,24 @@ function step3(){
   <div class="section-label">Tutti gli altri moduli</div>
   <div class="grid">${altri.map(m=>tile(m)).join('')}</div>
 
+  <div class="custom-mod">
+    <div class="cm-h"><span class="ic">✨</span>Non trovi quello che ti serve?</div>
+    <div class="cm-sub">Descrivi il <b>modulo su misura</b> che vorresti: a cosa serve, cosa deve gestire, chi lo usa. Lo costruiamo noi e te lo ricontattiamo.</div>
+    <div class="bigfield">
+      <label>Modulo su misura — descrizione</label>
+      <textarea id="rich" placeholder="es. «Mi serve un modulo per registrare i controlli F-Gas dei condizionatori: per ogni apparecchio data del controllo, kg di gas, e un avviso quando scade.»" oninput="S.richiesta=this.value;updCount()" maxlength="1200">${esc(S.richiesta)}</textarea>
+    </div>
+  </div>
+
   <div class="navbar">
     <button class="btn ghost" onclick="back()">← Indietro</button>
     <div class="sp"></div>
-    <span class="count">${MODULI_BASE.length + S.extra.size} moduli</span>
+    <span class="count">${MODULI_BASE.length + S.extra.size} moduli${S.richiesta.trim()?' + 1 su misura':''}</span>
     <button class="btn pri" onclick="next()">Vedi l'anteprima →</button>
   </div>`;
 }
 function toggleExtra(id){ S.extra.has(id)?S.extra.delete(id):S.extra.add(id); render(); }
+function updCount(){ const c=$('.count'); if(c) c.textContent=`${MODULI_BASE.length + S.extra.size} moduli${S.richiesta.trim()?' + 1 su misura':''}`; }
 
 /* ---------------- STEP 4 — anteprima + invio ---------------- */
 function chosenMods(){ return [...MODULI_BASE, ...MODULI_EXTRA.filter(m=>S.extra.has(m.id))]; }
@@ -156,6 +167,7 @@ function step4(){
     <div class="rowl"><span class="k">SETTORE</span><span>${settore?esc(settore.ic+' '+settore.nome):'—'}</span></div>
     <div class="rowl"><span class="k">BASE</span><div class="chips">${MODULI_BASE.map(m=>`<span class="chip b">${m.ic} ${esc(m.nome)}</span>`).join('')}</div></div>
     <div class="rowl"><span class="k">EXTRA</span><div class="chips">${extraChosen.length?extraChosen.map(m=>`<span class="chip">${m.ic} ${esc(m.nome)}${m.stato==='arrivo'?' · in arrivo':''}</span>`).join(''):'<span class="cs" style="color:var(--t3)">nessuno</span>'}</div></div>
+    ${S.richiesta.trim()?`<div class="rowl"><span class="k">SU MISURA</span><div class="chips"><span class="chip" style="white-space:normal;line-height:1.45;text-align:left">✨ ${esc(S.richiesta.trim())}</span></div></div>`:''}
 
     <div class="send-box">
       <h3>📨 Invia la tua configurazione</h3>
@@ -233,7 +245,7 @@ function pcMockup(){
 
 /* ---------------- invio / export ---------------- */
 function buildConfig(){
-  return {
+  const c = {
     azienda: S.azienda.trim(),
     settore: S.settore,
     accento: S.accent,
@@ -241,6 +253,8 @@ function buildConfig(){
     moduli_extra: [...S.extra],
     generato: 'configuratore'
   };
+  if(S.richiesta.trim()) c.modulo_su_misura = S.richiesta.trim();
+  return c;
 }
 function buildText(){
   const c = buildConfig();
@@ -253,6 +267,7 @@ function buildText(){
     `Colore accento: ${c.accento}`,
     `Moduli base: ${c.moduli_base.map(nm).join(', ')}`,
     `Moduli extra: ${c.moduli_extra.length?c.moduli_extra.map(nm).join(', '):'nessuno'}`,
+    ...(c.modulo_su_misura?[``,`MODULO SU MISURA (da costruire):`,c.modulo_su_misura]:[]),
     ``,
     `--- config (per l'assemblaggio) ---`,
     JSON.stringify(c)

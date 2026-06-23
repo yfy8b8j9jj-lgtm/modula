@@ -16,8 +16,9 @@ Base URL live: `https://yfy8b8j9jj-lgtm.github.io/modula`
 
 ### Sezioni (rami dall'hub)
 **Sito & vendita**
-- Landing — "Vetrina pubblica di Modula" — stato: online — `/` 
+- Landing — "Vetrina pubblica di Modula" — stato: online — `/` (mostra SOLO i moduli pronti)
 - Configuratore — "Il cliente compone la sua app" — stato: online — `/configuratore/`
+  (mostra SOLO i moduli `pronto`; gli `arrivo` sono nascosti finché non si costruiscono; card "richiesta modulo su misura" per chiedere ciò che non c'è)
 
 **App del cliente**
 - App personalizzata — "Il gestionale interno" — stato: template — `/app.html`
@@ -39,12 +40,14 @@ Base URL live: `https://yfy8b8j9jj-lgtm.github.io/modula`
 Fatto: landing+effetti · hosting GitHub Pages · brand "Modula" · configuratore · portale · mini-sito ·
 Fabbrica a 4 reparti con agenti auto-miglioranti (subagent reali) · orchestrazione Dirigenza · reparto
 Conversione (skill importa-dati) · modalità demo/vetrina nelle app · Fabbrica resa interna (widget regia su Claude).
-Prossimo: simulare/assemblare clienti veri dalla regia · costruire moduli "in arrivo" in Laboratorio.
+Prossimo: simulare/assemblare clienti veri dalla regia · costruire i 7 moduli trasversali del catalogo
+(`interventi`·`contratti-man`·`scadenziario`·`impianti`·`mezzi`·`preventivi`·`ricorrenze`) in Laboratorio.
 Rimandato: dominio personalizzato · generatore in-browser (scartato: tutto su Claude).
 
 ### Nuovi arrivi
-Widget regia Fabbrica (interattivo, su Claude) · modalità demo nelle app cliente · vetrina demo in landing ·
-reparto Conversione · orchestrazione automatica Dirigenza→reparti.
+Catalogo settori→moduli su misura spuntabile (`FABBRICA/SETTORI-MODULI.md`, 15 settori) · richiesta modulo
+su misura nel configuratore · landing/configuratore mostrano solo i moduli pronti · widget regia Fabbrica ·
+modalità demo nelle app cliente · reparto Conversione.
 
 ## Stati → colori pill
 online/pronto/template = success (verde) · scheletro = warning (ambra) · da fare/da strutturare = neutro.

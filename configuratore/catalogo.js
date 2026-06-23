@@ -1,9 +1,10 @@
 /* ============================================================
    CATALOGO — dati del configuratore (settori + moduli)
    Modifica QUI per cambiare l'offerta.
-   stato: 'pronto'  = modulo già costruito e funzionante
-          'arrivo'  = in arrivo (visibile e selezionabile, anteprima generica)
-   Man mano che costruiamo un modulo, basta mettere stato:'pronto'.
+   stato: 'pronto'  = modulo già costruito e funzionante → MOSTRATO nel configuratore
+          'arrivo'  = ancora da costruire → NASCOSTO dal configuratore (coda di lavoro).
+                      Chi lo desidera lo descrive nella card "modulo su misura".
+   Man mano che costruiamo un modulo, basta mettere stato:'pronto' e ricompare da solo.
    ============================================================ */
 
 /* --- MODULI BASE: ci sono SEMPRE in ogni app (non disattivabili) --- */

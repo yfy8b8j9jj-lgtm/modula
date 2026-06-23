@@ -56,6 +56,16 @@ body{background:var(--bg0);color:var(--t1);font-family:var(--body);font-size:15p
   font-family:var(--disp);font-weight:600;font-size:22px;padding:16px 18px;outline:none;transition:border-color .2s,box-shadow .2s}
 .bigfield input:focus{border-color:var(--cy);box-shadow:var(--glow)}
 .bigfield input::placeholder{color:var(--t3);font-weight:400}
+.bigfield textarea{width:100%;background:var(--bg2);border:1.5px solid var(--line2);border-radius:14px;color:var(--t1);
+  font-family:inherit;font-weight:500;font-size:15px;line-height:1.5;padding:14px 16px;outline:none;resize:vertical;min-height:96px;transition:border-color .2s,box-shadow .2s}
+.bigfield textarea:focus{border-color:var(--cy);box-shadow:var(--glow)}
+.bigfield textarea::placeholder{color:var(--t3);font-weight:400}
+
+/* card richiesta modulo su misura */
+.custom-mod{margin-top:14px;background:rgba(15,19,25,.6);border:1.5px dashed var(--line2);border-radius:16px;padding:16px 16px 14px}
+.custom-mod .cm-h{display:flex;align-items:center;gap:9px;font-family:var(--disp);font-weight:600;font-size:16px;margin-bottom:3px}
+.custom-mod .cm-h .ic{font-size:20px}
+.custom-mod .cm-sub{font-size:12.5px;color:var(--t2);margin-bottom:12px;line-height:1.45}
 
 /* griglia selezionabili (settori / moduli) */
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}

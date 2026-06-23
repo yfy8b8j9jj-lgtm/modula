@@ -16,7 +16,4 @@ const NEWS = [
 
   { tipo:'Funzione', data:'Maggio 2026',
     titolo:'Hub intelligente', testo:'Scrivi in linguaggio naturale e l’app smista da sola in calendario, note, clienti…' },
-
-  { tipo:'In arrivo', data:'Prossimamente',
-    titolo:'Prenotazioni online', testo:'Appuntamenti e prenotazioni gestiti direttamente dai tuoi clienti.' },
 ];
