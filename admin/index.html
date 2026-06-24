@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Modula · Regia</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#0E1110;--bg2:#161A18;--card:#1B201D;--line:#2A312D;--line2:#374039;--t1:#EAF0EC;--t2:#9BA8A0;--t3:#6B776F;--ac:#34D399;--ac2:#10B981;--amber:#FBBF24;--red:#F87171}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--t1);font-family:Inter,system-ui,sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:920px;margin:0 auto;padding:22px 18px 80px}
+  h1,h2,h3{font-family:'Space Grotesk',sans-serif}
+  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}
+  .brand{display:flex;align-items:center;gap:9px;font-family:'Space Grotesk';font-weight:700;font-size:19px}
+  .dot{width:10px;height:10px;border-radius:50%;background:var(--ac)}
+  .sub{font-family:'JetBrains Mono';font-size:10px;letter-spacing:2px;color:var(--t3);border:1px solid var(--line2);border-radius:5px;padding:2px 6px;text-transform:uppercase}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:14px}
+  .muted{color:var(--t2)}.tiny{font-size:12.5px;color:var(--t3)}
+  label{display:block;font-size:12px;color:var(--t2);margin-bottom:5px}
+  input,select{width:100%;background:var(--bg2);border:1px solid var(--line2);border-radius:9px;color:var(--t1);font:inherit;font-size:14px;padding:10px 12px;outline:none}
+  input:focus,select:focus{border-color:var(--ac)}
+  input::placeholder{color:var(--t3)}
+  .mono{font-family:'JetBrains Mono';letter-spacing:.5px}
+  button{font:inherit;font-weight:600;cursor:pointer;border-radius:9px;border:1px solid var(--line2);background:transparent;color:var(--t1);padding:10px 16px;transition:.12s}
+  button:hover{border-color:var(--ac);color:var(--ac)}
+  button.pri{background:var(--ac);border-color:var(--ac);color:#04130D}
+  button.pri:hover{background:var(--ac2);border-color:var(--ac2);color:#04130D}
+  button.sm{padding:6px 11px;font-size:13px;border-radius:8px}
+  button:disabled{opacity:.5;cursor:default}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .modchips{display:flex;flex-wrap:wrap;gap:7px;margin-top:4px}
+  .chip{font-size:12.5px;padding:6px 11px;border-radius:8px;border:1px solid var(--line2);color:var(--t2);cursor:pointer;user-select:none}
+  .chip.on{background:rgba(52,211,153,.13);border-color:var(--ac);color:var(--ac)}
+  .chip.lock{opacity:.6;cursor:default}
+  .err{color:var(--red);font-size:13px;min-height:18px;margin:6px 0}
+  .ok{color:var(--ac);font-size:13px}
+  .tenant{border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:10px;background:var(--bg2)}
+  .tenant h3{font-size:16px;display:flex;align-items:center;gap:8px}
+  .pill{font-size:11px;font-family:'JetBrains Mono';padding:2px 7px;border-radius:6px;border:1px solid var(--line2);color:var(--t3)}
+  .pill.on{color:var(--ac);border-color:var(--ac)}
+  .pill.off{color:var(--amber);border-color:var(--amber)}
+  .codebox{background:#04130D;border:1px solid var(--ac);border-radius:9px;padding:10px 13px;font-family:'JetBrains Mono';color:var(--ac);display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px}
+  .center{min-height:72vh;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .lbox{width:100%;max-width:360px}
+  .link{color:var(--t2);font-size:13px;text-align:center;margin-top:14px;cursor:pointer}
+  .link:hover{color:var(--ac)}
+  a{color:var(--ac)}
+  .sec{font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--t3);margin:26px 0 10px;font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+
+<script src="../core/config.js"></script>
+<script>
+const CFG=window.MODULA_CONFIG||{};
+const DEMO=/^__/.test(CFG.SUPABASE_URL||'__');
+const sb=DEMO?null:window.supabase.createClient(CFG.SUPABASE_URL,CFG.SUPABASE_ANON_KEY);
+const $=s=>document.querySelector(s);
+const app=$('#app');
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const slugify=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+
+/* catalogo moduli: hub e notif sempre attivi (base imprescindibile) */
+const MODULES=[
+  {id:'hub',label:'Hub',lock:true},{id:'notif',label:'Notifiche',lock:true},
+  {id:'cal',label:'Calendario'},{id:'notes',label:'Note'},
+  {id:'clients',label:'Clienti'},{id:'emps',label:'Personale'},
+  {id:'man',label:'Manutenzioni'},{id:'pellet',label:'Pellet'},{id:'sites',label:'Cantieri'},
+  {id:'macchine',label:'Macchine'},{id:'zone',label:'Zone'},{id:'conti',label:'Conti'},
+];
+const mLabel=id=>{const m=MODULES.find(x=>x.id===id);return m?m.label:id;};
+const APP_URL=location.origin+location.pathname.replace(/admin\/.*/,'')+'app.html';
+
+let session=null, isAdmin=false, authBusy=false;
+
+function shell(inner){app.innerHTML=`<header><div class="brand"><span class="dot"></span>Modula <span class="sub">Regia</span></div><div class="row">${session?`<button class="sm" onclick="doLogout()">Esci</button>`:''}</div></header>${inner}`;}
+
+/* ---------- AUTH ---------- */
+function viewLogin(mode){
+  const reg=mode==='signup';
+  shell(`<div class="center"><div class="lbox">
+    <h2 style="text-align:center;margin-bottom:6px">${reg?'Crea il tuo accesso':'Regia Modula'}</h2>
+    <div class="tiny" style="text-align:center;margin-bottom:20px">${reg?'Sarà il tuo account super-admin':'Accedi per gestire le aziende'}</div>
+    <div class="card">
+      <label>Email</label><input id="em" type="email" autocomplete="email" placeholder="tu@email.it">
+      <div style="height:10px"></div>
+      <label>Password</label><input id="pw" type="password" autocomplete="${reg?'new-password':'current-password'}" placeholder="min 6 caratteri" onkeydown="if(event.key==='Enter')${reg?'doSignup()':'doLogin()'}">
+      <div class="err" id="er"></div>
+      <button class="pri" style="width:100%" onclick="${reg?'doSignup()':'doLogin()'}">${reg?'Crea account':'Entra'}</button>
+    </div>
+    <div class="link" onclick="viewLogin('${reg?'login':'signup'}')">${reg?'← Ho già un account':'Prima volta? Crea l\'accesso →'}</div>
+  </div></div>`);
+  setTimeout(()=>{const f=$('#em');if(f)f.focus();},60);
+}
+function aerr(m){const e=$('#er');if(e)e.textContent=m;authBusy=false;}
+async function doLogin(){
+  if(authBusy)return;authBusy=true;
+  const email=$('#em').value.trim(),pw=$('#pw').value;
+  if(!email||!pw)return aerr('Email e password');
+  const{error}=await sb.auth.signInWithPassword({email,password:pw});
+  if(error)return aerr(error.message.includes('Invalid')?'Email o password sbagliate':error.message);
+  authBusy=false;boot();
+}
+async function doSignup(){
+  if(authBusy)return;authBusy=true;
+  const email=$('#em').value.trim(),pw=$('#pw').value;
+  if(!email||pw.length<6)return aerr('Email valida e password ≥ 6');
+  const{data,error}=await sb.auth.signUp({email,password:pw});
+  if(error)return aerr(error.message.includes('already')?'Email già registrata — torna al login':error.message);
+  authBusy=false;
+  if(!data.session){shell(`<div class="center"><div class="lbox card" style="text-align:center"><h3>Controlla l'email \u{1F4E7}</h3><p class="muted" style="margin:10px 0">Ti ho mandato un link di conferma. Cliccalo, poi torna qui e accedi.</p><p class="tiny">Per evitare la conferma email (ok se sei solo tu): Supabase → Authentication → Sign In/Up → disattiva “Confirm email”.</p><button style="margin-top:12px" onclick="viewLogin('login')">← Vai al login</button></div></div>`);return;}
+  boot();
+}
+async function doLogout(){await sb.auth.signOut();session=null;isAdmin=false;boot();}
+
+/* ---------- NON super-admin: offri il bootstrap ---------- */
+function viewClaim(){
+  shell(`<div class="center"><div class="lbox card" style="text-align:center">
+    <h3>Diventa super-admin \u{1F451}</h3>
+    <p class="muted" style="margin:10px 0">Il tuo account non è ancora super-admin. Se sei il primo (la piattaforma è nuova), prendine il controllo qui.</p>
+    <div class="err" id="er"></div>
+    <button class="pri" onclick="doClaim()">Prendi il controllo</button>
+    <div class="link" onclick="doLogout()">Esci</div>
+  </div></div>`);
+}
+async function doClaim(){
+  const{data,error}=await sb.rpc('bootstrap_super_admin');
+  if(error)return $('#er').textContent=error.message;
+  if(!data)return $('#er').textContent='Esiste già un super-admin — questo account non può diventarlo.';
+  boot();
+}
+
+/* ---------- DASHBOARD ---------- */
+async function viewDash(){
+  shell(`<div id="dash"><div class="muted">Carico le aziende…</div></div>`);
+  const{data:tenants,error}=await sb.from('tenants').select('*').order('created_at',{ascending:false});
+  if(error){$('#dash').innerHTML=`<div class="card err">${esc(error.message)}</div>`;return;}
+  const list=(tenants||[]).map(tenantCard).join('')||`<div class="card muted">Nessuna azienda ancora. Creane una qui sotto ↓</div>`;
+  $('#dash').innerHTML=`
+    <div class="row" style="justify-content:space-between;align-items:baseline">
+      <h2>Aziende <span class="muted" style="font-size:15px">(${(tenants||[]).length})</span></h2>
+      <span class="tiny">App cliente: <a href="${APP_URL}" target="_blank">${esc(APP_URL)}</a></span>
+    </div>
+    <div class="sec">Attive</div>
+    ${list}
+    <div class="sec">Nuova azienda</div>
+    ${newTenantForm()}`;
+}
+function tenantCard(t){
+  const mods=Array.isArray(t.modules)?t.modules:[];
+  const chips=MODULES.map(m=>`<span class="chip ${mods.includes(m.id)?'on':''} ${m.lock?'lock':''}" data-t="${t.id}" data-m="${m.id}" ${m.lock?'':`onclick="toggleMod(this)"`}>${esc(m.label)}</span>`).join('');
+  return `<div class="tenant" id="t-${t.id}">
+    <h3>${esc(t.name)} <span class="pill">${esc(t.slug)}</span> <span class="pill ${t.active?'on':'off'}">${t.active?'attiva':'sospesa'}</span></h3>
+    <div class="tiny" style="margin:8px 0 4px">Moduli attivi — clicca per accendere/spegnere</div>
+    <div class="modchips">${chips}</div>
+    <div class="row" style="margin-top:12px">
+      <button class="sm pri" onclick="saveMods('${t.id}')">Salva moduli</button>
+      <button class="sm" onclick="toggleActive('${t.id}',${t.active?'false':'true'})">${t.active?'Sospendi':'Riattiva'}</button>
+      <span class="ok" id="ok-${t.id}"></span>
+    </div>
+  </div>`;
+}
+function toggleMod(el){el.classList.toggle('on');}
+async function saveMods(id){
+  const on=[...document.querySelectorAll(`#t-${id} .chip.on`)].map(c=>c.dataset.m);
+  const{error}=await sb.from('tenants').update({modules:on}).eq('id',id);
+  $('#ok-'+id).textContent=error?('⚠ '+error.message):'✓ salvato';
+  if(!error)setTimeout(()=>{const e=$('#ok-'+id);if(e)e.textContent='';},2000);
+}
+async function toggleActive(id,to){const{error}=await sb.from('tenants').update({active:to==='true'}).eq('id',id);if(!error)viewDash();else alert(error.message);}
+
+function newTenantForm(){
+  const chips=MODULES.map(m=>`<span class="chip ${m.lock||['cal','notes','clients'].includes(m.id)?'on':''} ${m.lock?'lock':''}" data-m="${m.id}" ${m.lock?'':`onclick="toggleMod(this)"`}>${esc(m.label)}</span>`).join('');
+  return `<div class="card">
+    <div class="grid2">
+      <div><label>Nome azienda</label><input id="nt-name" placeholder="Es. Rossi Riscaldamenti" oninput="$('#nt-slug').value=$('#nt-slug').dataset.t?$('#nt-slug').value:slugify(this.value)"></div>
+      <div><label>Slug (codice breve)</label><input id="nt-slug" class="mono" placeholder="rossi-riscaldamenti" oninput="this.dataset.t=1"></div>
+    </div>
+    <div style="margin-top:12px"><label>Nome del titolare (chi gestirà l'azienda)</label><input id="nt-owner" placeholder="Es. Marco Rossi"></div>
+    <div style="margin-top:14px"><label>Moduli da attivare</label><div class="modchips" id="nt-mods">${chips}</div></div>
+    <div class="err" id="nt-err"></div>
+    <button class="pri" style="margin-top:6px" onclick="createTenant()">Crea azienda + genera codice</button>
+    <div id="nt-result"></div>
+  </div>`;
+}
+async function createTenant(){
+  const name=$('#nt-name').value.trim(), slug=($('#nt-slug').value.trim()||slugify(name)), owner=$('#nt-owner').value.trim();
+  const mods=[...document.querySelectorAll('#nt-mods .chip.on')].map(c=>c.dataset.m);
+  const er=$('#nt-err');er.textContent='';
+  if(!name||!slug||!owner)return er.textContent='Nome azienda, slug e nome titolare sono obbligatori';
+  const{data,error}=await sb.rpc('create_tenant',{p_name:name,p_slug:slug,p_modules:mods,p_owner_name:owner});
+  if(error)return er.textContent=error.message.includes('duplicate')?'Slug già usato, scegline un altro':error.message;
+  $('#nt-result').innerHTML=`<div class="card" style="margin-top:14px;border-color:var(--ac)">
+    <h3 style="color:var(--ac)">✓ ${esc(name)} creata!</h3>
+    <p class="muted" style="margin:8px 0">Dai al titolare <b>${esc(owner)}</b> il link dell'app e questo codice. Lui si registra e lo inserisce:</p>
+    <div class="codebox"><span>${esc(data.invite_code)}</span><button class="sm" onclick="navigator.clipboard.writeText('${esc(data.invite_code)}')">copia</button></div>
+    <p class="tiny" style="margin-top:8px">App: <a href="${APP_URL}" target="_blank">${esc(APP_URL)}</a> · il codice si usa una volta sola.</p>
+  </div>`;
+  $('#nt-name').value='';$('#nt-slug').value='';$('#nt-slug').dataset.t='';$('#nt-owner').value='';
+  setTimeout(viewDash,4000);
+}
+
+/* ---------- BOOT ---------- */
+async function boot(){
+  if(DEMO){shell(`<div class="center"><div class="lbox card"><h3>Backend non configurato</h3><p class="muted" style="margin-top:8px">Compila <span class="mono">core/config.js</span> con URL e anon key del progetto Supabase.</p></div></div>`);return;}
+  const{data:{session:s}}=await sb.auth.getSession();
+  session=s;
+  if(!session){viewLogin('login');return;}
+  const{data:row}=await sb.from('super_admins').select('user_id').eq('user_id',session.user.id).maybeSingle();
+  isAdmin=!!row;
+  if(!isAdmin){viewClaim();return;}
+  viewDash();
+}
+boot();
+</script>
+</body>
+</html>
