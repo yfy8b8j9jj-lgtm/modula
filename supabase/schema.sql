@@ -36,31 +36,9 @@ create table if not exists super_admins (
   created_at timestamptz not null default now()
 );
 
--- ─────────────────────────── 3. FUNZIONI CHIAVE ───────────────────────────
--- tenant dell'utente loggato (letto dal suo record in employees). SECURITY DEFINER
--- per poter leggere employees ignorando la RLS (evita ricorsione infinita).
-create or replace function current_tenant() returns uuid
-  language sql stable security definer set search_path = public as $$
-  select tenant_id from employees where user_id = auth.uid() limit 1;
-$$;
-
-create or replace function is_super_admin() returns boolean
-  language sql stable security definer set search_path = public as $$
-  select exists(select 1 from super_admins where user_id = auth.uid());
-$$;
-
--- trigger: stampa tenant_id automaticamente su ogni insert (l'app non lo invia)
-create or replace function set_tenant_id() returns trigger
-  language plpgsql security definer set search_path = public as $$
-begin
-  if new.tenant_id is null then
-    new.tenant_id := current_tenant();
-  end if;
-  return new;
-end;
-$$;
-
--- ─────────────────── 4. TABELLE DATI (tutte con tenant_id) ──────────────────
+-- ─────────────────── 3. TABELLE DATI (tutte con tenant_id) ──────────────────
+-- (Le funzioni chiave vengono DOPO le tabelle: una funzione SQL viene validata
+--  subito, quindi deve trovare le tabelle che usa già create.)
 create table if not exists employees (
   id uuid primary key default gen_random_uuid(),
   tenant_id uuid not null references tenants(id) on delete cascade,
@@ -207,6 +185,30 @@ create table if not exists push_subs (
   created_at timestamptz not null default now()
 );
 
+-- ─────────────────────────── 4. FUNZIONI CHIAVE ───────────────────────────
+-- tenant dell'utente loggato (letto dal suo record in employees). SECURITY DEFINER
+-- per poter leggere employees ignorando la RLS (evita ricorsione infinita).
+create or replace function current_tenant() returns uuid
+  language sql stable security definer set search_path = public as $$
+  select tenant_id from employees where user_id = auth.uid() limit 1;
+$$;
+
+create or replace function is_super_admin() returns boolean
+  language sql stable security definer set search_path = public as $$
+  select exists(select 1 from super_admins where user_id = auth.uid());
+$$;
+
+-- trigger: stampa tenant_id automaticamente su ogni insert (l'app non lo invia)
+create or replace function set_tenant_id() returns trigger
+  language plpgsql security definer set search_path = public as $$
+begin
+  if new.tenant_id is null then
+    new.tenant_id := current_tenant();
+  end if;
+  return new;
+end;
+$$;
+
 -- ──────────────── 5. TRIGGER tenant_id + INDICI su tenant_id ────────────────
 do $$
 declare t text;
@@ -336,6 +338,8 @@ end $$;
 
 -- ============================================================================
 -- FATTO. Prossimo passo lato app: core/config.js con URL + anon key.
--- Per diventare super-admin: registrati nell'app, poi qui esegui
---     select bootstrap_super_admin();
+-- Per diventare super-admin: registrarsi e poi chiamare bootstrap_super_admin()
+-- DALL'APP da loggati (la console super-admin lo fa con sb.rpc), NON dal SQL
+-- Editor: qui auth.uid() e' vuoto. In alternativa, una volta noto l'id utente:
+--     insert into super_admins(user_id) select id from auth.users where email='tua@email';
 -- ============================================================================

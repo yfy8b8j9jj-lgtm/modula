@@ -5,7 +5,7 @@
 
    Finche' restano i segnaposto __..__ l'app parte in modalita' DEMO (nessun backend). */
 window.MODULA_CONFIG = {
-  SUPABASE_URL: '__SUPABASE_URL__',        /* es. https://xxxx.supabase.co */
-  SUPABASE_ANON_KEY: '__SUPABASE_ANON_KEY__', /* chiave pubblica anon/publishable */
-  VAPID_PUBLIC: '__VAPID_PUBLIC_KEY__'     /* push notifiche (una per la piattaforma) */
+  SUPABASE_URL: 'https://hdhaptzsgkpdhuelwede.supabase.co',
+  SUPABASE_ANON_KEY: 'sb_publishable_qGJfbDU2EKSBMl6pzY__CQ_ifsB4UGA',
+  VAPID_PUBLIC: '__VAPID_PUBLIC_KEY__'     /* push notifiche — da configurare piu' avanti */
 };
