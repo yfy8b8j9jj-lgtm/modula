@@ -158,6 +158,12 @@ function tenantCard(t){
     <h3>${esc(t.name)} <span class="pill">${esc(t.slug)}</span> <span class="pill ${t.active?'on':'off'}">${t.active?'attiva':'sospesa'}</span></h3>
     <div class="tiny" style="margin:8px 0 4px">Moduli attivi — clicca per accendere/spegnere</div>
     <div class="modchips">${chips}</div>
+    <div class="row" style="margin-top:12px;align-items:center;gap:8px">
+      <span class="tiny">Posti dipendente (0 = illimitati)</span>
+      <input type="number" min="0" id="posti-${t.id}" value="${t.max_employees||0}" style="max-width:90px;padding:6px 9px">
+      <button class="sm" onclick="savePosti('${t.id}')">Salva posti</button>
+      <span class="ok" id="okp-${t.id}"></span>
+    </div>
     <div class="row" style="margin-top:12px">
       <button class="sm pri" onclick="saveMods('${t.id}')">Salva moduli</button>
       <button class="sm" onclick="toggleActive('${t.id}',${t.active?'false':'true'})">${t.active?'Sospendi':'Riattiva'}</button>
@@ -173,6 +179,13 @@ async function saveMods(id){
   if(!error)setTimeout(()=>{const e=$('#ok-'+id);if(e)e.textContent='';},2000);
 }
 async function toggleActive(id,to){const{error}=await sb.from('tenants').update({active:to==='true'}).eq('id',id);if(!error)viewDash();else alert(error.message);}
+async function savePosti(id){
+  const raw=parseInt(document.getElementById('posti-'+id).value);const v=isNaN(raw)?4:Math.max(0,raw); // 0 = illimitati
+  const{error}=await sb.from('tenants').update({max_employees:v}).eq('id',id);
+  const el=document.getElementById('okp-'+id);
+  el.textContent=error?('⚠ '+error.message):'✓ salvato';
+  if(!error)setTimeout(()=>{el.textContent='';},2000);
+}
 
 function newTenantForm(){
   const chips=MODULES.map(m=>`<span class="chip ${m.lock||['cal','notes','clients'].includes(m.id)?'on':''} ${m.lock?'lock':''}" data-m="${m.id}" ${m.lock?'':`onclick="toggleMod(this)"`}>${esc(m.label)}</span>`).join('');
@@ -182,6 +195,7 @@ function newTenantForm(){
       <div><label>Slug (codice breve)</label><input id="nt-slug" class="mono" placeholder="rossi-riscaldamenti" oninput="this.dataset.t=1"></div>
     </div>
     <div style="margin-top:12px"><label>Nome del titolare (chi gestirà l'azienda)</label><input id="nt-owner" placeholder="Es. Marco Rossi"></div>
+    <div style="margin-top:12px"><label>Posti dipendente (titolare incluso · 0 = illimitati, per "Tutto compreso")</label><input id="nt-posti" type="number" min="0" value="4" style="max-width:140px"></div>
     <div style="margin-top:14px"><label>Moduli da attivare</label><div class="modchips" id="nt-mods">${chips}</div></div>
     <div class="err" id="nt-err"></div>
     <button class="pri" style="margin-top:6px" onclick="createTenant()">Crea azienda + genera codice</button>
@@ -195,6 +209,8 @@ async function createTenant(){
   if(!name||!slug||!owner)return er.textContent='Nome azienda, slug e nome titolare sono obbligatori';
   const{data,error}=await sb.rpc('create_tenant',{p_name:name,p_slug:slug,p_modules:mods,p_owner_name:owner});
   if(error)return er.textContent=error.message.includes('duplicate')?'Slug già usato, scegline un altro':error.message;
+  const postiRaw=parseInt($('#nt-posti').value);const posti=isNaN(postiRaw)?4:Math.max(0,postiRaw); // 0 = illimitati
+  if(data&&data.tenant_id&&posti!==4)await sb.from('tenants').update({max_employees:posti}).eq('id',data.tenant_id);
   $('#nt-result').innerHTML=`<div class="card" style="margin-top:14px;border-color:var(--ac)">
     <h3 style="color:var(--ac)">✓ ${esc(name)} creata!</h3>
     <p class="muted" style="margin:8px 0">Dai al titolare <b>${esc(owner)}</b> il link dell'app e questo codice. Lui si registra e lo inserisce:</p>

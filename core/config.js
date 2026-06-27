@@ -7,5 +7,8 @@
 window.MODULA_CONFIG = {
   SUPABASE_URL: 'https://hdhaptzsgkpdhuelwede.supabase.co',
   SUPABASE_ANON_KEY: 'sb_publishable_qGJfbDU2EKSBMl6pzY__CQ_ifsB4UGA',
-  VAPID_PUBLIC: '__VAPID_PUBLIC_KEY__'     /* push notifiche — da configurare piu' avanti */
+  VAPID_PUBLIC: '__VAPID_PUBLIC_KEY__',    /* push notifiche — da configurare piu' avanti */
+  /* Indirizzo dove arrivano le richieste moduli inviate dai titolari DALL'app.
+     Le legge la Fabbrica (vedi FABBRICA/POSTA.md) e instrada attivazioni / moduli su misura. */
+  SUPPORT_EMAIL: 'lollyberry00@gmail.com'
 };

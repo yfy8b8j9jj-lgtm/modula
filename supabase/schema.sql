@@ -26,9 +26,12 @@ create table if not exists tenants (
   logo        text default '',
   accent      text default '#34D399',
   modules     jsonb not null default '["hub","cal","notes","notif"]'::jsonb,  -- moduli attivi per questa azienda
+  max_employees int not null default 4,  -- posti dipendente del piano (titolare incluso); il super-admin lo alza quando il cliente paga per piu' utenti
   active      boolean not null default true,
   created_at  timestamptz not null default now()
 );
+-- per i database gia' creati prima di questa colonna (idempotente):
+alter table tenants add column if not exists max_employees int not null default 4;
 
 -- ───────────────────── 2. SUPER-ADMIN (tu, il creatore) ────────────────────
 create table if not exists super_admins (
@@ -114,6 +117,16 @@ create table if not exists attachments (
   id uuid primary key default gen_random_uuid(),
   tenant_id uuid not null references tenants(id) on delete cascade,
   site_id uuid references sites(id) on delete cascade,
+  name text, type text, storage_path text, date date,
+  created_at timestamptz not null default now()
+);
+
+-- allegati collegati direttamente a un CLIENTE (foto, file). client_id in cascade:
+-- cancellando un cliente spariscono anche i suoi allegati (diritto all'oblio GDPR).
+create table if not exists client_attachments (
+  id uuid primary key default gen_random_uuid(),
+  tenant_id uuid not null references tenants(id) on delete cascade,
+  client_id uuid references clients(id) on delete cascade,
   name text, type text, storage_path text, date date,
   created_at timestamptz not null default now()
 );
@@ -215,7 +228,7 @@ declare t text;
 begin
   foreach t in array array[
     'employees','clients','maintenances','appointments','pellet','sites','site_logs',
-    'attachments','notes','note_groups','lists','list_items','chat','call_log',
+    'attachments','client_attachments','notes','note_groups','lists','list_items','chat','call_log',
     'expenses','maint_prices','push_subs'
   ] loop
     execute format('drop trigger if exists trg_tenant on %I', t);
@@ -231,7 +244,7 @@ declare t text;
 begin
   foreach t in array array[
     'tenants','employees','clients','maintenances','appointments','pellet','sites','site_logs',
-    'attachments','notes','note_groups','lists','list_items','chat','call_log',
+    'attachments','client_attachments','notes','note_groups','lists','list_items','chat','call_log',
     'expenses','maint_prices','settings','push_subs'
   ] loop
     execute format('alter table %I enable row level security', t);
@@ -250,7 +263,7 @@ declare t text;
 begin
   foreach t in array array[
     'employees','clients','maintenances','appointments','pellet','sites','site_logs',
-    'attachments','notes','note_groups','lists','list_items','chat','call_log',
+    'attachments','client_attachments','notes','note_groups','lists','list_items','chat','call_log',
     'expenses','maint_prices','settings','push_subs'
   ] loop
     execute format($p$create policy tenant_isolation on %I for all
@@ -327,7 +340,7 @@ do $$
 declare t text;
 begin
   foreach t in array array[
-    'clients','maintenances','appointments','pellet','sites','site_logs','attachments',
+    'clients','maintenances','appointments','pellet','sites','site_logs','attachments','client_attachments',
     'notes','note_groups','lists','list_items','chat','call_log','expenses','maint_prices',
     'employees','settings'
   ] loop
@@ -335,6 +348,22 @@ begin
     exception when duplicate_object then null; end;
   end loop;
 end $$;
+
+-- ──────────────────── 9. STORAGE (file: foto, allegati) ────────────────────
+-- I file (foto cliente/cantiere, documenti) stanno nel bucket PRIVATO 'allegati'.
+-- Isolamento per azienda: il path inizia con la cartella <tenant_id>/...
+--   es.  <tenant_id>/client/<clientId>/<file>   ·   <tenant_id>/site/<siteId>/<file>
+-- La policy consente a ogni azienda solo i file sotto la SUA cartella (o il super-admin).
+insert into storage.buckets (id, name, public)
+  values ('allegati','allegati', false)
+  on conflict (id) do nothing;
+
+drop policy if exists allegati_tenant on storage.objects;
+create policy allegati_tenant on storage.objects for all to authenticated
+  using ( bucket_id = 'allegati'
+          and ( (storage.foldername(name))[1] = current_tenant()::text or is_super_admin() ) )
+  with check ( bucket_id = 'allegati'
+          and ( (storage.foldername(name))[1] = current_tenant()::text or is_super_admin() ) );
 
 -- ============================================================================
 -- FATTO. Prossimo passo lato app: core/config.js con URL + anon key.

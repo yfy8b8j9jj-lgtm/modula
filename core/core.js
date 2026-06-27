@@ -12,7 +12,9 @@ const SB_KEY=CFG.SUPABASE_ANON_KEY||'__SUPABASE_ANON_KEY__';
 /* VETRINA/DEMO: finché le credenziali sono segnaposto (o assenti) l'app parte in
    modalità demo — dati di esempio, nessun backend — così è subito navigabile.
    Appena si inseriscono URL+chiave reali, riparte normale (login + Supabase). */
-const DEMO=(/^__/.test(SB_URL))||!SB_URL;
+/* DEMO anche su richiesta esplicita: app.html?demo=1 → vetrina della STESSA app
+   (dati di esempio, nessun backend), usata dal bottone "Demo dal vivo" della landing. */
+const DEMO=(/^__/.test(SB_URL))||!SB_URL||/[?&]demo=1\b/.test(location.search);
 const sb=DEMO?null:window.supabase.createClient(SB_URL,SB_KEY);
 
 /* ─── BRAND: NON più fisso. Viene caricato dal tenant dell'azienda dopo il login
@@ -22,6 +24,13 @@ let BRAND={ name:'', tagline:'', logo:'' };
    è l'elenco deciso dal super-admin per quel tenant. Filtra cosa si vede in nav. */
 let ACTIVE_MODULES=null;
 const moduleActive=id=>!ACTIVE_MODULES||id==='hub'||id==='notif'||ACTIVE_MODULES.includes(id);
+/* Posti dipendente del piano (titolare incluso). null = illimitato (demo/retrocompat).
+   Lo decide il super-admin per ogni azienda; l'app impedisce di superarlo. */
+let MAX_EMP=null;
+/* id dell'azienda loggata: prefisso delle cartelle Storage (isolamento file per tenant). */
+let TENANT_ID=null;
+const seatCount=()=>S.employees.filter(e=>e.active!==false).length;
+const seatFull=()=>MAX_EMP!=null && seatCount()>=MAX_EMP;
 /* viste visibili = permesso utente (can) ∩ modulo attivo per il tenant */
 function visViews(){return VIEWS.filter(v=>v.id==='hub'||v.id==='notif'||((v.id==='zone'?can('clients'):can(v.id))&&moduleActive(v.id)));}
 
@@ -447,6 +456,39 @@ const VIEWS=[
   {id:'emps',ic:'👷',label:'Personale'},
 ];
 let view='hub';
+/* ---- CATALOGO PIATTAFORMA: tutti i moduli Modula (per la schermata "Moduli & richieste") ----
+   base = sempre presenti · pronti = attivabili subito dal super-admin · arrivo = su misura/da costruire.
+   Tenere allineato con configuratore/catalogo.js e admin/index.html. */
+const MODULE_CATALOG={
+  base:[
+    {id:'hub',ic:'⚡',nome:'Hub',desc:'La schermata iniziale.'},
+    {id:'cal',ic:'📅',nome:'Calendario',desc:'Appuntamenti e scadenze.'},
+    {id:'notes',ic:'📝',nome:'Note',desc:'Appunti e liste condivise.'},
+    {id:'clients',ic:'👥',nome:'Clienti',desc:'Anagrafica clienti.'},
+    {id:'emps',ic:'👷',nome:'Personale',desc:'Il tuo team e i permessi.'},
+  ],
+  pronti:[
+    {id:'conti',ic:'💰',nome:'Conti',desc:'Entrate, spese e utile.'},
+    {id:'man',ic:'🔧',nome:'Manutenzioni',desc:'Interventi e storico.'},
+    {id:'sites',ic:'🏗',nome:'Cantieri',desc:'Lavori in corso e ore.'},
+    {id:'macchine',ic:'⚙️',nome:'Macchine',desc:'Parco macchine e schede.'},
+    {id:'pellet',ic:'🪵',nome:'Consegne',desc:'Consegne, bolle e scorte.'},
+    {id:'zone',ic:'🗺️',nome:'Zone & Mappa',desc:'Zone e clienti sulla mappa.'},
+  ],
+  arrivo:[
+    {id:'prenota',ic:'🗓️',nome:'Prenotazioni',desc:'Appuntamenti online.'},
+    {id:'magazzino',ic:'📦',nome:'Magazzino',desc:'Scorte e soglie.'},
+    {id:'catalogo',ic:'🏷️',nome:'Catalogo/Listino',desc:'Prodotti e prezzi.'},
+    {id:'fatture',ic:'🧾',nome:'Fatture',desc:'Preventivi e fatture.'},
+    {id:'documenti',ic:'📁',nome:'Documenti',desc:'Archivio file e contratti.'},
+    {id:'report',ic:'📊',nome:'Report',desc:'Statistiche e grafici.'},
+    {id:'fidelity',ic:'🎁',nome:'Fidelity',desc:'Punti e promozioni.'},
+    {id:'turni',ic:'⏱️',nome:'Turni & Presenze',desc:'Turni e timbrature.'},
+  ],
+};
+const catName=id=>{for(const k of['base','pronti','arrivo']){const m=MODULE_CATALOG[k].find(x=>x.id===id);if(m)return m.nome;}return id;};
+/* moduli attivi oggi sul tenant (base sempre + extra accesi dal super-admin) */
+const activeModuleIds=()=>{const base=MODULE_CATALOG.base.map(m=>m.id);const extra=(ACTIVE_MODULES||[]).filter(id=>!base.includes(id)&&id!=='notif');return[...base,...extra];};
 /* ---- accesso (Supabase Auth) ---- */
 const me=()=>S.session?byId(S.employees,S.session.empId):null;
 const isOwner=()=>{const m=me();return !!(m&&m.isOwner);};
@@ -475,7 +517,8 @@ function renderNav(){
     :`<div class="ni" style="${sep};color:var(--amber)" onclick="enablePush()"><span class="ic">🔔</span>Attiva notifiche</div>`;
   $('#navside').innerHTML=vis.map(v=>{const c=v.id==='notif'?notifCount():0;return`<div class="ni ${view===v.id?'act':''}" onclick="nav('${v.id}')"><span class="ic">${v.ic}</span>${v.label}${c?` <span class="badge" style="margin-left:auto;border-color:var(--cy);color:var(--cy)">${c}</span>`:''}</div>`;}).join('')
     +pushNav
-    +(isOwner()?`<div class="ni" style="${ps==='unsupported'?sep:''}" onclick="openBackup()"><span class="ic">💾</span>Backup dati</div>`:'')
+    +(isOwner()?`<div class="ni" style="${ps==='unsupported'?sep:''}" onclick="openModuleStore()"><span class="ic">🧩</span>Moduli & richieste</div>`:'')
+    +(isOwner()?`<div class="ni" onclick="openBackup()"><span class="ic">💾</span>Backup dati</div>`:'')
     +(isOwner()?`<div class="ni" onclick="openImport()"><span class="ic">📥</span>Importa dati</div>`:'')
     +`<div class="ni" onclick="toggleTheme()"><span class="ic">${getTheme()==='dark'?'☀️':'🌙'}</span>${getTheme()==='dark'?'Tema chiaro':'Tema scuro'}</div>`
     +`<div class="ni" onclick="logout()"><span class="ic">🚪</span>Esci (${esc(me().name)})</div>`;
@@ -505,6 +548,7 @@ function openMenu(){
     ${overflow.map(v=>`<div class="sg" style="padding:13px" onclick="closeSheet();nav('${v.id}')">${v.ic} ${v.label}${v.id==='notif'&&notifCount()?' ('+notifCount()+')':''}</div>`).join('')||'<div class="subtle" style="padding:4px 2px">Tutte le sezioni sono già nella barra in basso.</div>'}
     <div class="sg" style="padding:13px;border-color:var(--cy);color:var(--cy)" onclick="closeSheet();editBottomNav()">⚙️ Personalizza la barra in basso</div>
     ${pushRow}
+    ${isOwner()?`<div class="sg" style="padding:13px;border-color:var(--cy);color:var(--cy)" onclick="closeSheet();openModuleStore()">🧩 Moduli & richieste</div>`:''}
     ${isOwner()?`<div class="sg" style="padding:13px;border-color:var(--line2)" onclick="closeSheet();openBackup()">💾 Backup dati</div>`:''}
     ${isOwner()?`<div class="sg" style="padding:13px;border-color:var(--line2)" onclick="closeSheet();openImport()">📥 Importa dati</div>`:''}
     <div class="sg" style="padding:13px" onclick="closeSheet();toggleTheme()">${getTheme()==='dark'?'☀️ Tema chiaro':'🌙 Tema scuro'}</div>
@@ -535,6 +579,81 @@ function saveBottomNav(){
   setBottomNav(ids);closeSheet();renderNav();toast('✓ Barra aggiornata');
 }
 function resetBottomNav(){setBottomNav(NAV_DEFAULT);closeSheet();renderNav();toast('↩ Barra ripristinata');}
+/* ====== MODULI & RICHIESTE (solo titolare) ======
+   Il titolare vede i moduli attivi, può spuntare quelli che vorrebbe in più o
+   descrivere un modulo su misura, e inviare la richiesta via email a Modula.
+   NON attiva nulla: l'attivazione la decide il super-admin dalla console admin. */
+function openModuleStore(){
+  const active=new Set(activeModuleIds());
+  const card=(m,state)=>{
+    // state: 'on' = già attivo · 'add' = richiedibile (pronto) · 'soon' = su misura/in arrivo
+    const on=state==='on';
+    const tag=on?'<span class="badge" style="border-color:var(--teal);color:var(--teal)">attivo</span>'
+      :state==='soon'?'<span class="badge" style="border-color:var(--amber);color:var(--amber)">su misura</span>':'';
+    const click=on?'':`onclick="this.classList.toggle('on')"`;
+    return `<div class="sg modpick ${on?'lock':''}" data-id="${m.id}" data-state="${state}" ${click}
+      style="padding:12px;justify-content:flex-start;align-items:flex-start;gap:10px;${on?'opacity:.7;cursor:default':''}">
+      <span style="font-size:20px">${m.ic}</span>
+      <div style="text-align:left;flex:1"><div style="font-weight:600">${esc(m.nome)} ${tag}</div>
+      <div class="subtle" style="font-size:11.5px;margin-top:2px">${esc(m.desc)}</div></div>
+    </div>`;
+  };
+  const baseCards=MODULE_CATALOG.base.map(m=>card(m,'on')).join('');
+  const prontiAttivi=MODULE_CATALOG.pronti.filter(m=>active.has(m.id)).map(m=>card(m,'on')).join('');
+  const prontiAdd=MODULE_CATALOG.pronti.filter(m=>!active.has(m.id)).map(m=>card(m,'add')).join('');
+  const arrivo=MODULE_CATALOG.arrivo.map(m=>card(m,'soon')).join('');
+  openSheet(`<h3>🧩 Moduli & richieste <span class="x" onclick="closeSheet()">✕</span></h3>
+  <div class="subtle" style="margin-bottom:12px">Questi sono i moduli della tua app. Spunta quelli che vorresti <b>aggiungere</b> o descrivi un <b>modulo su misura</b>: la richiesta arriva a Modula, che lo attiva o lo costruisce per te.</div>
+
+  <div class="modstore-sec">✓ Attivi nella tua app</div>
+  <div class="seg" style="flex-direction:column;gap:8px">${baseCards}${prontiAttivi}</div>
+
+  ${prontiAdd?`<div class="modstore-sec">➕ Puoi aggiungerli subito</div>
+  <div class="seg" style="flex-direction:column;gap:8px">${prontiAdd}</div>`:''}
+
+  <div class="modstore-sec">✨ Su misura / in arrivo</div>
+  <div class="seg" style="flex-direction:column;gap:8px">${arrivo}</div>
+
+  <div class="fld" style="margin-top:14px"><label>Modulo su misura — descrivi cosa ti serve</label>
+    <textarea id="mod-rich" rows="3" placeholder="es. «Un modulo per i controlli F-Gas: per ogni apparecchio data del controllo, kg di gas e avviso quando scade.»" style="width:100%;background:var(--bg2);border:1px solid var(--line);border-radius:9px;color:var(--t1);font:inherit;padding:10px;resize:vertical"></textarea></div>
+
+  <div class="actions"><button class="btn ghost" onclick="closeSheet()">Annulla</button><button class="btn pri" onclick="sendModuleRequest()">✉️ Invia richiesta</button></div>`);
+}
+function sendModuleRequest(){
+  const picks=[...document.querySelectorAll('.modpick.on')].map(el=>({id:el.dataset.id,state:el.dataset.state}));
+  const add=picks.filter(p=>p.state==='add').map(p=>catName(p.id));
+  const soon=picks.filter(p=>p.state==='soon').map(p=>catName(p.id));
+  const rich=(document.getElementById('mod-rich')?.value||'').trim();
+  if(!add.length&&!soon.length&&!rich){toast('Spunta un modulo o descrivi cosa ti serve');return;}
+  const support=CFG.SUPPORT_EMAIL||'lollyberry00@gmail.com';
+  const who=me();
+  const lines=[
+    `RICHIESTA MODULI — ${BRAND.name||'(azienda)'}`,
+    `Da: ${who?who.name:''}`,
+    `Attivi ora: ${activeModuleIds().map(catName).join(', ')}`,
+    ``,
+    add.length?`Da ATTIVARE (già pronti): ${add.join(', ')}`:'',
+    soon.length?`Su misura / in arrivo richiesti: ${soon.join(', ')}`:'',
+    rich?`\nMODULO SU MISURA (descrizione):\n${rich}`:'',
+  ].filter(Boolean);
+  const sub=`Richiesta moduli — ${BRAND.name||'azienda'}`;
+  window.location.href=`mailto:${support}?subject=${encodeURIComponent(sub)}&body=${encodeURIComponent(lines.join('\n'))}`;
+  closeSheet();toast('📨 Apro l\'email con la tua richiesta');
+}
+/* il titolare ha finito i posti del piano → chiede a Modula di aumentarli (via email) */
+function requestMoreSeats(){
+  const support=CFG.SUPPORT_EMAIL||'lollyberry00@gmail.com';
+  const who=me();
+  const body=[
+    `PIÙ POSTI DIPENDENTE — ${BRAND.name||'(azienda)'}`,
+    `Da: ${who?who.name:''}`,
+    `Posti del piano: ${MAX_EMP!=null?MAX_EMP:'illimitati'} · già usati: ${seatCount()}`,
+    ``,
+    `Vorrei aumentare i posti dipendente. Nuovo numero desiderato: ______`
+  ].join('\n');
+  window.location.href=`mailto:${support}?subject=${encodeURIComponent('Più posti — '+(BRAND.name||'azienda'))}&body=${encodeURIComponent(body)}`;
+  closeSheet();toast('📨 Apro l\'email per la richiesta');
+}
 function openBackup(){
   const counts=`${S.clients.length} clienti · ${S.maintenances.length} manutenzioni · ${S.pellet.length} consegne · ${S.sites.length} cantieri · ${S.appointments.length} appuntamenti · ${S.notes.length} note · ${S.lists.length} liste`;
   openSheet(`<h3>💾 Backup & impostazioni <span class="x" onclick="closeSheet()">✕</span></h3>
@@ -601,7 +720,7 @@ function importBackup(ev){
       for(const{siteId,a}of pendingAtt){
         try{
           const blob=await(await fetch(a.dataUrl)).blob();
-          const path=siteId+'/'+uid()+'-'+a.name;
+          const path=TENANT_ID+'/site/'+siteId+'/'+uid()+'-'+a.name;
           await sb.storage.from('allegati').upload(path,blob,{contentType:blob.type||'application/octet-stream'});
           const row={id:uid(),site_id:siteId,name:a.name,type:a.type||'file',storage_path:path,date:a.date||todayIso()};
           await sb.from('attachments').insert(row);
@@ -961,6 +1080,7 @@ async function loadTenant(tenantId){
     if(!t)return;
     BRAND={name:t.name||'',tagline:t.tagline||'',logo:t.logo||''};
     ACTIVE_MODULES=Array.isArray(t.modules)?t.modules:(t.modules?JSON.parse(t.modules):[]);
+    MAX_EMP=(typeof t.max_employees==='number'&&t.max_employees>0)?t.max_employees:null; /* 0 o assente = illimitato (es. piano Tutto compreso) */
     if(t.accent){document.documentElement.style.setProperty('--cy',t.accent);document.documentElement.style.setProperty('--accent',t.accent);}
     if(BRAND.name)document.title=BRAND.name;
   }catch(e){console.error('loadTenant',e);}
@@ -974,6 +1094,7 @@ async function postAuth(){
     if(error)throw error;
     if(!emp){authMode='link';renderLock();return;}
     if(!emp.active){await sb.auth.signOut();authMode='login';renderLock();setTimeout(()=>lockErr('Accesso disattivato dal titolare'),100);return;}
+    TENANT_ID=emp.tenant_id;
     await loadTenant(emp.tenant_id);
     await loadAll();
     const my=byId(S.employees,emp.id)||MAPS.employees.fromDb(emp);
@@ -1071,7 +1192,7 @@ async function addClientPhoto(clientId,ev){
     if(w>max||h>max){const k=max/Math.max(w,h);w=Math.round(w*k);h=Math.round(h*k);}
     const cv=document.createElement('canvas');cv.width=w;cv.height=h;cv.getContext('2d').drawImage(img,0,0,w,h);
     cv.toBlob(async blob=>{try{
-      const name='foto-'+todayIso()+'.jpg';const path='client/'+clientId+'/'+uid()+'-'+name;
+      const name='foto-'+todayIso()+'.jpg';const path=TENANT_ID+'/client/'+clientId+'/'+uid()+'-'+name;
       const{error:e1}=await sb.storage.from('allegati').upload(path,blob,{contentType:'image/jpeg'});if(e1)throw e1;
       const row={id:uid(),client_id:clientId,name,type:'img',storage_path:path,date:todayIso()};
       const{error:e2}=await sb.from('client_attachments').insert(row);if(e2)throw e2;
@@ -1083,7 +1204,7 @@ async function addClientPhoto(clientId,ev){
 async function addClientFile(clientId,ev){
   const f=ev.target.files[0];if(!f)return;if(f.size>25*1024*1024){toast('⚠ File oltre 25MB');return;}
   try{
-    const path='client/'+clientId+'/'+uid()+'-'+f.name;
+    const path=TENANT_ID+'/client/'+clientId+'/'+uid()+'-'+f.name;
     const{error:e1}=await sb.storage.from('allegati').upload(path,f,{contentType:f.type||'application/octet-stream'});if(e1)throw e1;
     const row={id:uid(),client_id:clientId,name:f.name,type:'file',storage_path:path,date:todayIso()};
     const{error:e2}=await sb.from('client_attachments').insert(row);if(e2)throw e2;
@@ -1233,6 +1354,8 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 function demoBoot(){
   const oid=uid(),e2=uid(),c1=uid(),c2=uid(),c3=uid();const t=todayIso();const now=Date.now();
   S=blank();
+  BRAND={name:'Demo Impianti Verdi',tagline:'gestionale dimostrativo',logo:''};
+  {const bt=document.getElementById('brandtop');if(bt)bt.textContent=BRAND.name;}document.title=BRAND.name;
   S.employees=[
     {id:oid,name:'Tu (demo)',role:'Titolare',phone:'',perms:[],isOwner:true,active:true},
     {id:e2,name:'Luca Bianchi',role:'Tecnico',phone:'333 0102030',perms:['man','clients','cal','conti'],isOwner:false,active:true}

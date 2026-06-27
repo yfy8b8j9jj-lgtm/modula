@@ -124,7 +124,7 @@ async function addPhoto(id,ev){
     cv.toBlob(async blob=>{
       try{
         const name='foto-'+todayIso()+'.jpg';
-        const path=id+'/'+uid()+'-'+name;
+        const path=TENANT_ID+'/site/'+id+'/'+uid()+'-'+name;
         const{error:e1}=await sb.storage.from('allegati').upload(path,blob,{contentType:'image/jpeg'});
         if(e1)throw e1;
         const row={id:uid(),site_id:id,name,type:'img',storage_path:path,date:todayIso()};
@@ -142,7 +142,7 @@ async function addFile(id,ev){
   const f=ev.target.files[0];if(!f)return;
   if(f.size>25*1024*1024){toast('⚠ File oltre 25MB');return;}
   try{
-    const path=id+'/'+uid()+'-'+f.name;
+    const path=TENANT_ID+'/site/'+id+'/'+uid()+'-'+f.name;
     const{error:e1}=await sb.storage.from('allegati').upload(path,f,{contentType:f.type||'application/octet-stream'});
     if(e1)throw e1;
     const row={id:uid(),site_id:id,name:f.name,type:'file',storage_path:path,date:todayIso()};

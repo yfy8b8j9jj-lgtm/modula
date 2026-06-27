@@ -5,8 +5,10 @@
 function renderEmps(){
   const mKey=todayIso().slice(0,7);
   const PI={cal:['📅','Cal.'],man:['🔧','Manut.'],pellet:['🪵','Pellet'],sites:['🏗','Cant.'],notes:['📝','Note'],chat:['💬','Chat'],clients:['👥','Clienti']};
+  const seatInfo=MAX_EMP!=null?`${seatCount()} / ${MAX_EMP} posti`:`${S.employees.length}`;
   $('#main').innerHTML=`
-  <div class="pagetitle"><span class="accent" style="background:var(--cy)"></span>Personale <span class="subtle">(${S.employees.length})</span></div>
+  <div class="pagetitle"><span class="accent" style="background:var(--cy)"></span>Personale <span class="subtle" style="${seatFull()?'color:var(--amber)':''}">(${seatInfo})</span></div>
+  ${seatFull()?`<div class="card" style="padding:11px;margin-bottom:9px;border-color:rgba(199,127,18,.4);display:flex;align-items:center;gap:10px"><span style="font-size:18px">⚠️</span><div style="flex:1"><div style="font-size:13px;color:var(--t1)">Hai usato tutti i ${MAX_EMP} posti del tuo piano.</div><div class="subtle">Per aggiungere altri dipendenti, richiedi più posti.</div></div>${isOwner()?`<button class="btn sm pri" onclick="requestMoreSeats()">Richiedi posti</button>`:''}</div>`:''}
   ${S.employees.map(e=>{
     const tasks=S.maintenances.filter(m=>empIdsOf(m).includes(e.id)&&m.status!=='fatta').length+S.appointments.filter(a=>empIdsOf(a).includes(e.id)&&!a.done).length;
     const sites=S.sites.filter(s=>s.status!=='chiuso'&&s.employees.includes(e.id)).length;
@@ -25,7 +27,18 @@ function renderEmps(){
       ${pending?`<div onclick="event.stopPropagation();if(navigator.clipboard)navigator.clipboard.writeText('${e.inviteCode}');toast('📋 Codice copiato')" style="display:flex;align-items:center;gap:8px;margin-top:9px;background:var(--bg2);border:1px dashed rgba(199,127,18,.4);border-radius:10px;padding:8px 11px"><span style="font-size:9px;color:var(--t2)">CODICE INVITO</span><span style="font-family:var(--mono);font-size:13px;color:var(--amber);letter-spacing:1px">${esc(e.inviteCode)}</span><span style="margin-left:auto;font-size:10px;color:var(--cy)">📋 Copia</span></div>`:''}
     </div>`;
   }).join('')}
-  <button class="fab" onclick="editEmp(null)">+</button>`;
+  <button class="fab" onclick="addEmp()">+</button>`;
+}
+/* aggiunta dipendente con guardia sul limite di posti del piano */
+function addEmp(){
+  if(seatFull()){
+    if(isOwner())openSheet(`<h3>⚠️ Posti esauriti <span class="x" onclick="closeSheet()">✕</span></h3>
+      <div class="subtle" style="margin-bottom:12px">Il tuo piano include <b style="color:var(--t1)">${MAX_EMP} posti</b> dipendente e li hai usati tutti. Per aggiungerne altri serve aumentare il piano.</div>
+      <div class="actions"><button class="btn ghost" onclick="closeSheet()">Annulla</button><button class="btn pri" onclick="requestMoreSeats()">✉️ Richiedi più posti</button></div>`);
+    else toast('Posti del piano esauriti — chiedi al titolare');
+    return;
+  }
+  editEmp(null);
 }
 function editEmp(id){
   const e=id?byId(S.employees,id):{name:'',role:'',phone:'',perms:['cal','man','chat'],isOwner:false};
@@ -73,7 +86,9 @@ function saveEmp(id){
   if(makeOwner===true)perms=['hub','cal','notes','chat','man','pellet','sites','clients','emps']; // titolare = tutte le sezioni
   const data={name,role:$('#em-r').value.trim(),phone:$('#em-p').value.trim(),perms};
   if(makeOwner!==null)data.isOwner=makeOwner;
-  if(id){Object.assign(byId(S.employees,id),data);}else{S.employees.push({id:uid(),inviteCode:genInvite(name),userId:null,isOwner:false,active:true,...data});toast('🔑 Codice invito generato — aprilo dalla scheda');}
+  if(id){Object.assign(byId(S.employees,id),data);}else{
+    if(seatFull()){toast('Posti del piano esauriti ('+MAX_EMP+')');closeSheet();return;}
+    S.employees.push({id:uid(),inviteCode:genInvite(name),userId:null,isOwner:false,active:true,...data});toast('🔑 Codice invito generato — aprilo dalla scheda');}
   save();closeSheet();render();toast('👷 Salvato');
 }
 

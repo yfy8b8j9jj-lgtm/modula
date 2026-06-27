@@ -29,7 +29,6 @@ const MODULI_EXTRA = [
   { id:'prenota',  ic:'🗓️',  nome:'Prenotazioni',         desc:'Appuntamenti e prenotazioni online.',      stato:'arrivo' },
   { id:'magazzino',ic:'📦',  nome:'Magazzino',            desc:'Scorte, carico/scarico e soglie.',         stato:'arrivo' },
   { id:'catalogo', ic:'🏷️',  nome:'Catalogo / Listino',   desc:'Prodotti, prezzi e disponibilità.',        stato:'arrivo' },
-  { id:'fatture',  ic:'🧾',  nome:'Fatture & Preventivi', desc:'Preventivi, fatture e scadenziario.',      stato:'arrivo' },
   { id:'documenti',ic:'📁',  nome:'Documenti',            desc:'Archivio file, contratti e schede.',       stato:'arrivo' },
   { id:'report',   ic:'📊',  nome:'Report & Statistiche', desc:'Andamento attività in numeri e grafici.',  stato:'arrivo' },
   { id:'fidelity', ic:'🎁',  nome:'Fidelity & Promo',     desc:'Punti, tessere e promozioni clienti.',     stato:'arrivo' },
@@ -42,11 +41,11 @@ const MODULI_EXTRA = [
 const SETTORI = [
   { id:'impianti', ic:'🔥', nome:'Impianti & Energia',
     desc:'Caldaie, riscaldamento, fotovoltaico, assistenza tecnica.',
-    proposti:['man','macchine','sites','pellet','zone','conti','fatture'] },
+    proposti:['man','macchine','sites','pellet','zone','conti'] },
 
   { id:'edilizia', ic:'🧱', nome:'Edilizia & Cantieri',
     desc:'Imprese edili, ristrutturazioni, artigiani del costruire.',
-    proposti:['sites','man','documenti','fatture','conti'] },
+    proposti:['sites','man','documenti','conti'] },
 
   { id:'ristorazione', ic:'🍽️', nome:'Ristorazione',
     desc:'Ristoranti, bar, pizzerie, catering.',
@@ -62,7 +61,7 @@ const SETTORI = [
 
   { id:'altro', ic:'🧩', nome:'Altro / Su misura',
     desc:'Non trovi il tuo settore? Parti da una base e scegli tu.',
-    proposti:['conti','fatture'] },
+    proposti:['conti'] },
 ];
 
 /* --- CONTATTO: dove arriva la configurazione finita --- */

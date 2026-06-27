@@ -6,14 +6,14 @@ const ALL_MODS = [...MODULI_BASE, ...MODULI_EXTRA];
 const modById = id => byId(ALL_MODS, id);
 
 const STEPS = ['Azienda','Settore','Moduli','Anteprima'];
-const S = { step:1, azienda:'', settore:null, extra:new Set(), richiesta:'', previewView:'hub', device:'phone', accent:'#6EE7B7' };
+const S = { step:1, azienda:'', settore:null, extra:new Set(), richiesta:'', previewView:'hub', device:'phone', accent:'#FF453A' };
 
 /* ---------------- color picker (accento per-azienda) ---------------- */
 const COLORI = [
-  {h:'#6EE7B7',n:'Mint'},   {h:'#34D399',n:'Verde'},  {h:'#2DD4BF',n:'Teal'},
-  {h:'#60A5FA',n:'Blu'},    {h:'#818CF8',n:'Indaco'}, {h:'#A78BFA',n:'Viola'},
-  {h:'#F472B6',n:'Rosa'},   {h:'#F87171',n:'Rosso'},  {h:'#FB923C',n:'Arancio'},
-  {h:'#FBBF24',n:'Ambra'}
+  {h:'#FF453A',n:'Rosso'},  {h:'#E11D2A',n:'Cremisi'}, {h:'#FB923C',n:'Arancio'},
+  {h:'#FBBF24',n:'Ambra'},  {h:'#34D399',n:'Verde'},   {h:'#2DD4BF',n:'Teal'},
+  {h:'#60A5FA',n:'Blu'},    {h:'#818CF8',n:'Indaco'},  {h:'#A78BFA',n:'Viola'},
+  {h:'#F472B6',n:'Rosa'}
 ];
 function colorPicker(opts={}){
   const title = opts.title || 'Colore della tua app';

@@ -4,3 +4,9 @@
 # Editor / tooling locale
 .claude/
 *.log
+
+# Segreti locali — MAI nel repo (service-role key Supabase e simili)
+secrets.local.json
+*.local.json
+.env
+.env.*
