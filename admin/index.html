@@ -287,20 +287,39 @@ function filterTenants(q){
 function bancoPanel(banco,codes){
   if(!banco){
     return `<div class="banco">
-      <div><b>🧪 Banco di prova</b>
-        <div class="tiny">Un gestionale di test con TUTTI i moduli, separato dai clienti veri — per provare moduli e configurazioni.</div></div>
+      <div><b>\u{1F9EA} Banco di prova</b>
+        <div class="tiny">Un gestionale di test con TUTTI i moduli, separato dai clienti veri \u2014 per provare moduli e configurazioni.</div></div>
       <button class="sm pri" onclick="createBanco()">Crea il banco di prova</button>
     </div>`;
   }
   const oc=(codes.find(c=>c.is_owner)||{}).invite_code;
-  return `<div class="banco">
-    <div><b>🧪 Banco di prova</b> <span class="pill on">tutti i moduli</span>
-      <div class="tiny">Il tuo gestionale di test — provaci configurazioni e moduli liberamente.</div>
-      ${oc?`<div class="tiny" style="margin-top:6px">Per entrare nell'app la prima volta usa il codice: <b class="mono">${esc(oc)}</b></div>`:''}
-    </div>
-    <div class="row" style="gap:8px">
-      <a class="sm pri" href="${APP_URL}" target="_blank" style="text-decoration:none;display:inline-block">Apri nell'app ↗</a>
-      <button class="sm" onclick="resetBanco('${banco.id}')">Azzera dati</button>
+  const mods=Array.isArray(banco.modules)?banco.modules:[];
+  const chipFor=m=>`<span class="chip ${mods.includes(m.id)?'on':''} ${m.lock?'lock':''}" data-m="${m.id}" ${m.lock?'':`onclick="toggleMod(this)"`}>${esc(m.label)}</span>`;
+  const active=MODULES.filter(m=>mods.includes(m.id)).map(chipFor).join('');
+  const inactive=MODULES.filter(m=>!mods.includes(m.id)).map(chipFor).join('');
+  return `<div class="banco" style="align-items:stretch">
+    <div style="width:100%">
+      <div class="row" style="justify-content:space-between;align-items:flex-start;gap:10px">
+        <div><b>\u{1F9EA} Banco di prova</b> <span class="pill on">test</span>
+          <div class="tiny">Accendi/spegni i moduli per provare configurazioni, poi apri nell'app.</div>
+          ${oc?`<div class="tiny" style="margin-top:6px">Codice per entrare la prima volta: <b class="mono">${esc(oc)}</b></div>`:''}
+        </div>
+        <div class="row" style="gap:8px">
+          <a class="sm pri" href="${APP_URL}" target="_blank" style="text-decoration:none;display:inline-block">Apri nell'app \u2197</a>
+          <button class="sm" onclick="resetBanco('${banco.id}')">Azzera dati</button>
+        </div>
+      </div>
+      <div id="t-${banco.id}" style="margin-top:12px">
+        <div class="tiny" style="margin:6px 0 4px">Moduli attivi \u2014 clicca per spegnere</div>
+        <div class="modchips">${active}</div>
+        <div class="tiny" style="margin:12px 0 4px">Moduli da attivare \u2014 clicca per accendere</div>
+        <div class="modchips">${inactive||'<span class="tiny">Tutti i moduli sono attivi.</span>'}</div>
+        <div class="row" style="margin-top:12px;align-items:center;gap:8px">
+          <button class="sm pri" onclick="saveMods('${banco.id}')">Salva moduli</button>
+          <span class="ok" id="ok-${banco.id}"></span>
+          <span class="tiny">poi ricarica l'app per vedere l'effetto</span>
+        </div>
+      </div>
     </div>
   </div>`;
 }
