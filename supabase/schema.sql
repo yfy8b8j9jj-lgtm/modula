@@ -252,10 +252,17 @@ begin
   end loop;
 end $$;
 
--- tenants: leggibile dal proprio tenant; gestibile solo dal super-admin
-create policy tenant_isolation on tenants for all
-  using (id = current_tenant() or is_super_admin())
-  with check (is_super_admin());
+-- tenants: LETTURA dal proprio tenant; CREA/MODIFICA/ELIMINA solo il super-admin.
+-- Due policy separate apposta: con un'unica "for all" il DELETE valuta solo USING,
+-- e un qualunque membro del tenant (anche un dipendente) potrebbe cancellare la
+-- riga della propria azienda via API → perdita dati. Qui il delete resta super-admin.
+drop policy if exists tenant_isolation on tenants;
+drop policy if exists tenants_read on tenants;
+drop policy if exists tenants_admin on tenants;
+create policy tenants_read on tenants for select
+  using (id = current_tenant() or is_super_admin());
+create policy tenants_admin on tenants for all
+  using (is_super_admin()) with check (is_super_admin());
 
 -- tabelle dati: isolamento per tenant_id (+ super-admin)
 do $$
@@ -364,6 +371,44 @@ create policy allegati_tenant on storage.objects for all to authenticated
           and ( (storage.foldername(name))[1] = current_tenant()::text or is_super_admin() ) )
   with check ( bucket_id = 'allegati'
           and ( (storage.foldername(name))[1] = current_tenant()::text or is_super_admin() ) );
+
+-- ─────────────── 10. COCKPIT SUPER-ADMIN (gestione clienti) ────────────────
+-- Tabella PRIVATA (solo super-admin): contatti, note, piano/pagamenti del cliente.
+-- Separata da `tenants` perche' il titolare cliente legge la SUA riga tenant: qui no.
+create table if not exists tenant_admin (
+  tenant_id      uuid primary key references tenants(id) on delete cascade,
+  contact_person text default '',
+  contact_email  text default '',
+  contact_phone  text default '',
+  notes          text default '',
+  plan_price     numeric,
+  plan_period    text default 'monthly',
+  plan_due       date,
+  payment_status text default 'in_regola',
+  updated_at     timestamptz default now()
+);
+alter table tenant_admin enable row level security;
+drop policy if exists tenant_admin_sa on tenant_admin;
+create policy tenant_admin_sa on tenant_admin for all
+  using (is_super_admin()) with check (is_super_admin());
+
+-- Statistiche d'uso per azienda (solo super-admin): una query per la dashboard.
+create or replace function tenant_overview() returns table(
+  tenant_id uuid, employees_active int, employees_registered int,
+  clients_count int, last_activity timestamptz
+) language sql stable security definer set search_path = public as $$
+  select t.id,
+    (select count(*)::int from employees e where e.tenant_id = t.id and e.active),
+    (select count(*)::int from employees e where e.tenant_id = t.id and e.user_id is not null),
+    (select count(*)::int from clients c where c.tenant_id = t.id),
+    greatest(
+      (select max(created_at) from clients      where tenant_id = t.id),
+      (select max(created_at) from maintenances where tenant_id = t.id),
+      (select max(created_at) from appointments where tenant_id = t.id),
+      (select max(created_at) from notes        where tenant_id = t.id)
+    )
+  from tenants t where is_super_admin();
+$$;
 
 -- ============================================================================
 -- FATTO. Prossimo passo lato app: core/config.js con URL + anon key.

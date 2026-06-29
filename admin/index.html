@@ -44,6 +44,23 @@
   .pill.on{color:var(--ac);border-color:var(--ac)}
   .pill.off{color:var(--amber);border-color:var(--amber)}
   .codebox{background:#04130D;border:1px solid var(--ac);border-radius:9px;padding:10px 13px;font-family:'JetBrains Mono';color:var(--ac);display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px}
+  .stats{display:flex;flex-wrap:wrap;gap:14px;margin:10px 0 2px;font-size:13px;color:var(--t2)}
+  .adminbox{margin-top:16px;padding:14px 16px;background:var(--bg);border:1px solid var(--line);border-radius:11px}
+  details.tenant{border:1px solid var(--line);border-radius:12px;margin-bottom:10px;background:var(--bg2);padding:0;overflow:hidden}
+  details.tenant>summary{list-style:none;cursor:pointer;padding:13px 16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  details.tenant>summary::-webkit-details-marker{display:none}
+  details.tenant>summary::before{content:'▸';color:var(--t3);font-size:12px;transition:.15s;flex:0 0 auto}
+  details.tenant[open]>summary::before{transform:rotate(90deg)}
+  details.tenant>summary:hover{background:rgba(255,255,255,.03)}
+  details.tenant[open]>summary{border-bottom:1px solid var(--line)}
+  .tname{font-family:'Space Grotesk';font-weight:600;font-size:16px}
+  .sum-stat{margin-left:auto;color:var(--t2)}
+  .tbody{padding:14px 16px 16px}
+  details.newcard{border:1px dashed var(--line2);border-radius:12px;background:transparent;margin-top:6px}
+  details.newcard>summary{list-style:none;cursor:pointer;padding:13px 16px;font-weight:600;color:var(--ac)}
+  details.newcard>summary::-webkit-details-marker{display:none}
+  details.newcard[open]>summary{color:var(--t2)}
+  #search{font-size:14px;margin:6px 0 14px}
   .center{min-height:72vh;display:flex;flex-direction:column;align-items:center;justify-content:center}
   .lbox{width:100%;max-width:360px}
   .link{color:var(--t2);font-size:13px;text-align:center;margin-top:14px;cursor:pointer}
@@ -140,24 +157,80 @@ async function viewDash(){
   shell(`<div id="dash"><div class="muted">Carico le aziende…</div></div>`);
   const{data:tenants,error}=await sb.from('tenants').select('*').order('created_at',{ascending:false});
   if(error){$('#dash').innerHTML=`<div class="card err">${esc(error.message)}</div>`;return;}
-  const list=(tenants||[]).map(tenantCard).join('')||`<div class="card muted">Nessuna azienda ancora. Creane una qui sotto ↓</div>`;
+  // codici invito ancora DA USARE (titolare + dipendenti non ancora registrati), per tenant
+  const{data:pend}=await sb.from('employees').select('tenant_id,name,invite_code,is_owner').not('invite_code','is',null);
+  const codesByTenant={};
+  (pend||[]).forEach(e=>{(codesByTenant[e.tenant_id]=codesByTenant[e.tenant_id]||[]).push(e);});
+  // gestione cliente (contatti/piano/pagamenti) — tabella privata solo super-admin
+  const{data:adm}=await sb.from('tenant_admin').select('*');
+  const admById={}; (adm||[]).forEach(a=>{admById[a.tenant_id]=a;});
+  // statistiche d'uso per azienda
+  const{data:ov}=await sb.rpc('tenant_overview');
+  const ovById={}; (ov||[]).forEach(o=>{ovById[o.tenant_id]=o;});
+  const list=(tenants||[]).map(t=>tenantCard(t,codesByTenant[t.id]||[],admById[t.id]||{},ovById[t.id]||{})).join('')||`<div class="card muted">Nessuna azienda ancora. Creane una qui sotto ↓</div>`;
   $('#dash').innerHTML=`
     <div class="row" style="justify-content:space-between;align-items:baseline">
       <h2>Aziende <span class="muted" style="font-size:15px">(${(tenants||[]).length})</span></h2>
       <span class="tiny">App cliente: <a href="${APP_URL}" target="_blank">${esc(APP_URL)}</a></span>
     </div>
-    <div class="sec">Attive</div>
-    ${list}
-    <div class="sec">Nuova azienda</div>
-    ${newTenantForm()}`;
+    <input id="search" placeholder="🔍 Cerca azienda per nome o slug…" oninput="filterTenants(this.value)">
+    <div id="tlist">${list}</div>
+    <div id="noresult" class="card muted" style="display:none">Nessuna azienda trovata.</div>
+    <div class="sec">Aggiungi</div>
+    <details class="newcard"><summary>+ Nuova azienda</summary>${newTenantForm()}</details>`;
 }
-function tenantCard(t){
+function fmtDate(d){if(!d)return '—';try{return new Date(d).toLocaleDateString('it-CH',{day:'2-digit',month:'2-digit',year:'numeric'});}catch(e){return '—';}}
+function tenantCard(t,codes,adm,ov){
+  codes=codes||[];adm=adm||{};ov=ov||{};
   const mods=Array.isArray(t.modules)?t.modules:[];
   const chips=MODULES.map(m=>`<span class="chip ${mods.includes(m.id)?'on':''} ${m.lock?'lock':''}" data-t="${t.id}" data-m="${m.id}" ${m.lock?'':`onclick="toggleMod(this)"`}>${esc(m.label)}</span>`).join('');
-  return `<div class="tenant" id="t-${t.id}">
-    <h3>${esc(t.name)} <span class="pill">${esc(t.slug)}</span> <span class="pill ${t.active?'on':'off'}">${t.active?'attiva':'sospesa'}</span></h3>
-    <div class="tiny" style="margin:8px 0 4px">Moduli attivi — clicca per accendere/spegnere</div>
+  const codeRows = codes.length
+    ? codes.map(c=>`<div class="codebox"><span>${esc(c.name)}${c.is_owner?' · titolare':''}: <b>${esc(c.invite_code)}</b></span><button class="sm" onclick="navigator.clipboard.writeText('${esc(c.invite_code)}')">copia</button></div>`).join('')
+    : `<div class="tiny" style="margin-top:6px">Tutti gli inviti sono già stati usati (account attivi).</div>`;
+  const ownerCode=(codes.find(c=>c.is_owner)||{}).invite_code||'';
+  const inviteMsg=ownerCode?`Ciao, ecco l'accesso alla tua app ${t.name}:\n${APP_URL}\nCodice invito: ${ownerCode}\nApri il link, registrati e inserisci il codice.`:'';
+  const pay=adm.payment_status||'in_regola';
+  const opt=(v,l)=>`<option value="${v}" ${pay===v?'selected':''}>${l}</option>`;
+  return `<details class="tenant" id="t-${t.id}" data-search="${esc((t.name+' '+t.slug).toLowerCase())}">
+    <summary>
+      <span class="tname">${esc(t.name)}</span>
+      <span class="pill">${esc(t.slug)}</span>
+      <span class="pill ${t.active?'on':'off'}">${t.active?'attiva':'sospesa'}</span>
+      <span class="pill ${pay==='in_regola'?'on':'off'}">${pay==='in_regola'?'pag. ok':esc(pay)}</span>
+      <span class="sum-stat tiny">👤 ${ov.employees_active!=null?ov.employees_active:'?'} · 📇 ${ov.clients_count!=null?ov.clients_count:'?'}</span>
+    </summary>
+    <div class="tbody">
+    <div class="stats">
+      <span>👤 ${ov.employees_active!=null?ov.employees_active:'?'} dipendenti <span class="tiny">(${ov.employees_registered||0} registrati)</span></span>
+      <span>📇 ${ov.clients_count!=null?ov.clients_count:'?'} clienti</span>
+      <span>🕑 ultima attività: ${fmtDate(ov.last_activity)}</span>
+    </div>
+
+    <div class="tiny" style="margin:14px 0 4px">Moduli attivi — clicca per accendere/spegnere</div>
     <div class="modchips">${chips}</div>
+
+    <div class="tiny" style="margin:14px 0 4px">Codici invito da usare</div>
+    ${codeRows}
+    ${inviteMsg?`<button class="sm" style="margin-top:8px" onclick="copyEl('msg-${t.id}')">📋 Copia messaggio d'invito pronto</button><textarea id="msg-${t.id}" style="position:absolute;left:-9999px">${esc(inviteMsg)}</textarea>`:''}
+
+    <div class="adminbox">
+      <div class="sec" style="margin:0 0 10px">Gestione cliente <span class="tiny">(privato, solo tu)</span></div>
+      <div class="grid2">
+        <div><label>Referente</label><input id="c-person-${t.id}" value="${esc(adm.contact_person||'')}" placeholder="Es. Marco Rossi"></div>
+        <div><label>Telefono</label><input id="c-phone-${t.id}" value="${esc(adm.contact_phone||'')}" placeholder="+41 …"></div>
+        <div><label>Email</label><input id="c-email-${t.id}" value="${esc(adm.contact_email||'')}" placeholder="cliente@email.ch"></div>
+        <div><label>Colore app</label><input id="c-accent-${t.id}" type="color" value="${esc(t.accent||'#34D399')}" style="height:40px;padding:4px"></div>
+        <div><label>Canone CHF/mese</label><input id="c-price-${t.id}" type="number" min="0" step="1" value="${adm.plan_price!=null?adm.plan_price:''}" placeholder="59"></div>
+        <div><label>Scadenza / rinnovo</label><input id="c-due-${t.id}" type="date" value="${adm.plan_due||''}"></div>
+        <div><label>Stato pagamento</label><select id="c-pay-${t.id}">${opt('in_regola','In regola')}${opt('insoluto','Insoluto')}${opt('sospeso','Sospeso')}</select></div>
+      </div>
+      <div style="margin-top:10px"><label>Note (private)</label><input id="c-notes-${t.id}" value="${esc(adm.notes||'')}" placeholder="Promemoria, accordi, scadenze…"></div>
+      <div class="row" style="margin-top:10px;align-items:center;gap:8px">
+        <button class="sm pri" onclick="saveAdmin('${t.id}')">Salva gestione</button>
+        <span class="ok" id="oka-${t.id}"></span>
+      </div>
+    </div>
+
     <div class="row" style="margin-top:12px;align-items:center;gap:8px">
       <span class="tiny">Posti dipendente (0 = illimitati)</span>
       <input type="number" min="0" id="posti-${t.id}" value="${t.max_employees||0}" style="max-width:90px;padding:6px 9px">
@@ -166,10 +239,52 @@ function tenantCard(t){
     </div>
     <div class="row" style="margin-top:12px">
       <button class="sm pri" onclick="saveMods('${t.id}')">Salva moduli</button>
+      <a class="sm" style="text-decoration:none;display:inline-block" href="${APP_URL}" target="_blank">Apri app cliente ↗</a>
       <button class="sm" onclick="toggleActive('${t.id}',${t.active?'false':'true'})">${t.active?'Sospendi':'Riattiva'}</button>
+      <button class="sm" style="border-color:var(--red);color:var(--red)" onclick="deleteTenant('${t.id}')">Elimina</button>
       <span class="ok" id="ok-${t.id}"></span>
     </div>
-  </div>`;
+    </div>
+  </details>`;
+}
+function filterTenants(q){
+  q=(q||'').trim().toLowerCase();
+  let shown=0;
+  document.querySelectorAll('#tlist .tenant').forEach(el=>{
+    const hit=!q||(el.dataset.search||'').includes(q);
+    el.style.display=hit?'':'none';
+    if(hit)shown++;
+  });
+  const nr=document.getElementById('noresult');if(nr)nr.style.display=shown?'none':'block';
+}
+function copyEl(id){const e=document.getElementById(id);if(e){e.select?e.select():0;navigator.clipboard.writeText(e.value);}}
+async function saveAdmin(id){
+  const g=k=>document.getElementById(k+'-'+id);
+  const row={
+    tenant_id:id,
+    contact_person:g('c-person').value.trim(),
+    contact_email:g('c-email').value.trim(),
+    contact_phone:g('c-phone').value.trim(),
+    notes:g('c-notes').value.trim(),
+    plan_price: g('c-price').value===''?null:parseFloat(g('c-price').value),
+    plan_due: g('c-due').value||null,
+    payment_status: g('c-pay').value,
+    updated_at:new Date().toISOString()
+  };
+  const el=$('#oka-'+id);el.textContent='…';
+  const{error:e1}=await sb.from('tenant_admin').upsert(row);
+  const{error:e2}=await sb.from('tenants').update({accent:g('c-accent').value||'#34D399'}).eq('id',id);
+  const err=e1||e2;
+  el.textContent=err?('⚠ '+err.message):'✓ salvato';
+  if(!err)setTimeout(()=>{const x=$('#oka-'+id);if(x)x.textContent='';},2000);
+}
+async function deleteTenant(id){
+  const h=document.querySelector('#t-'+id+' .tname');
+  const nm=h?h.textContent.trim():'questa azienda';
+  if(!confirm('Eliminare «'+nm+'» e TUTTI i suoi dati (clienti, appuntamenti, dipendenti, note…)?\n\nÈ definitivo e non si può annullare.'))return;
+  const{error}=await sb.from('tenants').delete().eq('id',id);
+  if(error){alert('Errore: '+error.message);return;}
+  viewDash();
 }
 function toggleMod(el){el.classList.toggle('on');}
 async function saveMods(id){
