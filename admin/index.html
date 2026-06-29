@@ -61,6 +61,15 @@
   details.newcard>summary::-webkit-details-marker{display:none}
   details.newcard[open]>summary{color:var(--t2)}
   #search{font-size:14px;margin:6px 0 14px}
+  details.modedit{margin:14px 0;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+  details.modedit>summary{list-style:none;cursor:pointer;padding:10px 12px;font-size:13.5px;color:var(--t1)}
+  details.modedit>summary::-webkit-details-marker{display:none}
+  details.modedit>summary::before{content:'▸';color:var(--t3);margin-right:7px;font-size:11px}
+  details.modedit[open]>summary::before{content:'▾'}
+  details.modedit[open]>summary{border-bottom:1px solid var(--line)}
+  details.modedit>div{padding:4px 12px 12px}
+  .paste-box{background:var(--bg);border:1px dashed var(--ac);border-radius:10px;padding:12px 14px;margin-bottom:14px}
+  .paste-box textarea{width:100%;min-height:64px;background:var(--bg2);border:1px solid var(--line2);border-radius:8px;color:var(--t1);font-family:'JetBrains Mono';font-size:12.5px;padding:9px 11px;resize:vertical}
   .center{min-height:72vh;display:flex;flex-direction:column;align-items:center;justify-content:center}
   .lbox{width:100%;max-width:360px}
   .link{color:var(--t2);font-size:13px;text-align:center;margin-top:14px;cursor:pointer}
@@ -183,7 +192,11 @@ function fmtDate(d){if(!d)return '—';try{return new Date(d).toLocaleDateString
 function tenantCard(t,codes,adm,ov){
   codes=codes||[];adm=adm||{};ov=ov||{};
   const mods=Array.isArray(t.modules)?t.modules:[];
-  const chips=MODULES.map(m=>`<span class="chip ${mods.includes(m.id)?'on':''} ${m.lock?'lock':''}" data-t="${t.id}" data-m="${m.id}" ${m.lock?'':`onclick="toggleMod(this)"`}>${esc(m.label)}</span>`).join('');
+  const chipFor=m=>`<span class="chip ${mods.includes(m.id)?'on':''} ${m.lock?'lock':''}" data-t="${t.id}" data-m="${m.id}" ${m.lock?'':`onclick="toggleMod(this)"`}>${esc(m.label)}</span>`;
+  const active=MODULES.filter(m=>mods.includes(m.id));
+  const inactive=MODULES.filter(m=>!mods.includes(m.id));
+  const chipsActive=active.map(chipFor).join('');
+  const chipsInactive=inactive.map(chipFor).join('');
   const codeRows = codes.length
     ? codes.map(c=>`<div class="codebox"><span>${esc(c.name)}${c.is_owner?' · titolare':''}: <b>${esc(c.invite_code)}</b></span><button class="sm" onclick="navigator.clipboard.writeText('${esc(c.invite_code)}')">copia</button></div>`).join('')
     : `<div class="tiny" style="margin-top:6px">Tutti gli inviti sono già stati usati (account attivi).</div>`;
@@ -206,8 +219,19 @@ function tenantCard(t,codes,adm,ov){
       <span>🕑 ultima attività: ${fmtDate(ov.last_activity)}</span>
     </div>
 
-    <div class="tiny" style="margin:14px 0 4px">Moduli attivi — clicca per accendere/spegnere</div>
-    <div class="modchips">${chips}</div>
+    <details class="modedit">
+      <summary>🧩 Moduli — <b>${active.length}</b> attivi · modifica</summary>
+      <div>
+        <div class="tiny" style="margin:8px 0 4px">Attivi — clicca per spegnere</div>
+        <div class="modchips">${chipsActive}</div>
+        <div class="tiny" style="margin:14px 0 4px">Da attivare — clicca per accendere</div>
+        <div class="modchips">${chipsInactive||'<span class="tiny">Tutti i moduli sono già attivi.</span>'}</div>
+        <div class="row" style="margin-top:12px;align-items:center;gap:8px">
+          <button class="sm pri" onclick="saveMods('${t.id}')">Salva moduli</button>
+          <span class="ok" id="ok-${t.id}"></span>
+        </div>
+      </div>
+    </details>
 
     <div class="tiny" style="margin:14px 0 4px">Codici invito da usare</div>
     ${codeRows}
@@ -238,11 +262,9 @@ function tenantCard(t,codes,adm,ov){
       <span class="ok" id="okp-${t.id}"></span>
     </div>
     <div class="row" style="margin-top:12px">
-      <button class="sm pri" onclick="saveMods('${t.id}')">Salva moduli</button>
       <a class="sm" style="text-decoration:none;display:inline-block" href="${APP_URL}" target="_blank">Apri app cliente ↗</a>
       <button class="sm" onclick="toggleActive('${t.id}',${t.active?'false':'true'})">${t.active?'Sospendi':'Riattiva'}</button>
       <button class="sm" style="border-color:var(--red);color:var(--red)" onclick="deleteTenant('${t.id}')">Elimina</button>
-      <span class="ok" id="ok-${t.id}"></span>
     </div>
     </div>
   </details>`;
@@ -305,12 +327,22 @@ async function savePosti(id){
 function newTenantForm(){
   const chips=MODULES.map(m=>`<span class="chip ${m.lock||['cal','notes','clients'].includes(m.id)?'on':''} ${m.lock?'lock':''}" data-m="${m.id}" ${m.lock?'':`onclick="toggleMod(this)"`}>${esc(m.label)}</span>`).join('');
   return `<div class="card">
+    <div class="paste-box">
+      <label style="color:var(--ac)">📥 Incolla la configurazione del cliente</label>
+      <div class="tiny" style="margin:4px 0 8px">Incolla il blocco che arriva dal configuratore (anche tutta la mail): compilo io il form. Poi controlli e premi Crea.</div>
+      <textarea id="nt-paste" placeholder='{"azienda":"...","accento":"#...","moduli_base":[...],"moduli_extra":[...]}'></textarea>
+      <button class="sm pri" style="margin-top:8px" onclick="loadConfig()">Compila il form ↓</button>
+    </div>
     <div class="grid2">
       <div><label>Nome azienda</label><input id="nt-name" placeholder="Es. Rossi Riscaldamenti" oninput="$('#nt-slug').value=$('#nt-slug').dataset.t?$('#nt-slug').value:slugify(this.value)"></div>
       <div><label>Slug (codice breve)</label><input id="nt-slug" class="mono" placeholder="rossi-riscaldamenti" oninput="this.dataset.t=1"></div>
+      <div><label>Nome del titolare</label><input id="nt-owner" placeholder="Es. Marco Rossi"></div>
+      <div><label>Colore app</label><input id="nt-accent" type="color" value="#34D399" style="height:40px;padding:4px"></div>
+      <div><label>Email referente</label><input id="nt-email" placeholder="cliente@email.ch"></div>
+      <div><label>Telefono</label><input id="nt-phone" placeholder="+41 …"></div>
+      <div><label>Posti dipendente (0 = illimitati)</label><input id="nt-posti" type="number" min="0" value="4"></div>
+      <div><label>Logo (URL, facoltativo)</label><input id="nt-logo" placeholder="https://… o vuoto"></div>
     </div>
-    <div style="margin-top:12px"><label>Nome del titolare (chi gestirà l'azienda)</label><input id="nt-owner" placeholder="Es. Marco Rossi"></div>
-    <div style="margin-top:12px"><label>Posti dipendente (titolare incluso · 0 = illimitati, per "Tutto compreso")</label><input id="nt-posti" type="number" min="0" value="4" style="max-width:140px"></div>
     <div style="margin-top:14px"><label>Moduli da attivare</label><div class="modchips" id="nt-mods">${chips}</div></div>
     <div class="err" id="nt-err"></div>
     <button class="pri" style="margin-top:6px" onclick="createTenant()">Crea azienda + genera codice</button>
@@ -320,20 +352,55 @@ function newTenantForm(){
 async function createTenant(){
   const name=$('#nt-name').value.trim(), slug=($('#nt-slug').value.trim()||slugify(name)), owner=$('#nt-owner').value.trim();
   const mods=[...document.querySelectorAll('#nt-mods .chip.on')].map(c=>c.dataset.m);
-  const er=$('#nt-err');er.textContent='';
+  const er=$('#nt-err');er.style.color='';er.textContent='';
   if(!name||!slug||!owner)return er.textContent='Nome azienda, slug e nome titolare sono obbligatori';
   const{data,error}=await sb.rpc('create_tenant',{p_name:name,p_slug:slug,p_modules:mods,p_owner_name:owner});
   if(error)return er.textContent=error.message.includes('duplicate')?'Slug già usato, scegline un altro':error.message;
+  const tid=data&&data.tenant_id;
   const postiRaw=parseInt($('#nt-posti').value);const posti=isNaN(postiRaw)?4:Math.max(0,postiRaw); // 0 = illimitati
-  if(data&&data.tenant_id&&posti!==4)await sb.from('tenants').update({max_employees:posti}).eq('id',data.tenant_id);
+  if(tid){
+    const upd={};
+    const acc=$('#nt-accent')&&$('#nt-accent').value; if(acc)upd.accent=acc;
+    const logo=$('#nt-logo')?$('#nt-logo').value.trim():''; if(logo)upd.logo=logo;
+    if(posti!==4)upd.max_employees=posti;
+    if(Object.keys(upd).length)await sb.from('tenants').update(upd).eq('id',tid);
+    const email=$('#nt-email')?$('#nt-email').value.trim():'', phone=$('#nt-phone')?$('#nt-phone').value.trim():'';
+    if(owner||email||phone)await sb.from('tenant_admin').upsert({tenant_id:tid,contact_person:owner,contact_email:email,contact_phone:phone,updated_at:new Date().toISOString()});
+  }
   $('#nt-result').innerHTML=`<div class="card" style="margin-top:14px;border-color:var(--ac)">
     <h3 style="color:var(--ac)">✓ ${esc(name)} creata!</h3>
     <p class="muted" style="margin:8px 0">Dai al titolare <b>${esc(owner)}</b> il link dell'app e questo codice. Lui si registra e lo inserisce:</p>
     <div class="codebox"><span>${esc(data.invite_code)}</span><button class="sm" onclick="navigator.clipboard.writeText('${esc(data.invite_code)}')">copia</button></div>
     <p class="tiny" style="margin-top:8px">App: <a href="${APP_URL}" target="_blank">${esc(APP_URL)}</a> · il codice si usa una volta sola.</p>
   </div>`;
-  $('#nt-name').value='';$('#nt-slug').value='';$('#nt-slug').dataset.t='';$('#nt-owner').value='';
+  ['nt-name','nt-slug','nt-owner','nt-email','nt-phone','nt-logo','nt-paste'].forEach(k=>{const e=$('#'+k);if(e)e.value='';});$('#nt-slug').dataset.t='';
   setTimeout(viewDash,4000);
+}
+function loadConfig(){
+  const raw=($('#nt-paste').value||'').trim();
+  const er=$('#nt-err');er.style.color='';er.textContent='';
+  if(!raw){er.textContent='Incolla prima il blocco configurazione';return;}
+  let c;
+  try{const m=raw.match(/\{[\s\S]*\}/);c=JSON.parse(m?m[0]:raw);}
+  catch(e){er.textContent='Configurazione non valida (JSON non leggibile)';return;}
+  const name=c.azienda||c.nome||c.name||'';
+  $('#nt-name').value=name;
+  $('#nt-slug').value=c.slug||slugify(name);$('#nt-slug').dataset.t='1';
+  $('#nt-owner').value=c.referente||c.titolare||c.owner||'';
+  const set=(id,v)=>{const e=$('#'+id);if(e&&v!=null&&v!=='')e.value=v;};
+  set('nt-email',c.email);
+  set('nt-phone',c.telefono||c.phone);
+  set('nt-accent',c.accento||c.accent);
+  set('nt-logo',(c.logo&&c.logo!==true)?c.logo:'');
+  const posti=c.dipendenti!=null?c.dipendenti:(c.posti!=null?c.posti:c.max_employees);
+  if(posti!=null)set('nt-posti',posti);
+  let mods=[];
+  if(Array.isArray(c.modules))mods=c.modules;
+  else if(Array.isArray(c.moduli))mods=c.moduli;
+  else mods=[].concat(c.moduli_base||[],c.moduli_extra||[]);
+  const want=new Set(mods);
+  document.querySelectorAll('#nt-mods .chip').forEach(ch=>{if(ch.classList.contains('lock'))return;ch.classList.toggle('on',want.has(ch.dataset.m));});
+  er.style.color='var(--ac)';er.textContent='✓ Form compilato dalla configurazione — controlla e premi «Crea azienda»';
 }
 
 /* ---------- BOOT ---------- */

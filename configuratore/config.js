@@ -6,7 +6,7 @@ const ALL_MODS = [...MODULI_BASE, ...MODULI_EXTRA];
 const modById = id => byId(ALL_MODS, id);
 
 const STEPS = ['Azienda','Settore','Moduli','Anteprima'];
-const S = { step:1, azienda:'', settore:null, extra:new Set(), richiesta:'', previewView:'hub', device:'phone', accent:'#FF453A' };
+const S = { step:1, azienda:'', referente:'', email:'', telefono:'', dipendenti:'', logo:'', settore:null, extra:new Set(), richiesta:'', previewView:'hub', device:'phone', accent:'#FF453A' };
 
 /* ---------------- color picker (accento per-azienda) ---------------- */
 const COLORI = [
@@ -65,6 +65,18 @@ function step1(){
   </div>
   <div class="card" style="margin-top:12px">
     ${colorPicker({title:"Colore della tua app", hint:"sarà l'accento dell'app — lo vedrai nell'anteprima"})}
+  </div>
+  <div class="card" style="margin-top:12px">
+    <div class="bigfield"><label>Referente — chi gestirà l'app</label>
+      <input id="ref" value="${esc(S.referente)}" placeholder="es. Mario Rossi" oninput="S.referente=this.value" maxlength="60"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="bigfield"><label>Email</label><input id="eml" type="email" value="${esc(S.email)}" placeholder="tu@azienda.ch" oninput="S.email=this.value"></div>
+      <div class="bigfield"><label>Telefono</label><input id="tel" value="${esc(S.telefono)}" placeholder="+41 ..." oninput="S.telefono=this.value"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:2px">
+      <div class="bigfield"><label>Quanti utenti useranno l'app?</label><input id="dip" type="number" min="1" value="${esc(S.dipendenti)}" placeholder="es. 4" oninput="S.dipendenti=this.value"></div>
+      <div class="bigfield"><label>Logo (facoltativo)</label><input id="logo" type="file" accept="image/*" onchange="S.logo=this.files[0]?this.files[0].name:'';var o=document.getElementById('logo-ok');if(o)o.textContent=S.logo?('caricato: '+S.logo):''"><div id="logo-ok" style="color:var(--ac);font-size:12px;margin-top:4px">${S.logo?('caricato: '+esc(S.logo)):''}</div></div>
+    </div>
   </div>
   <div class="navbar">
     <div class="sp"></div>
@@ -245,10 +257,17 @@ function pcMockup(){
 
 /* ---------------- invio / export ---------------- */
 function buildConfig(){
+  const slug = S.azienda.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
   const c = {
     azienda: S.azienda.trim(),
+    slug: slug,
     settore: S.settore,
     accento: S.accent,
+    referente: S.referente.trim(),
+    email: S.email.trim(),
+    telefono: S.telefono.trim(),
+    dipendenti: S.dipendenti?Number(S.dipendenti):null,
+    logo: S.logo||false,
     moduli_base: MODULI_BASE.map(m=>m.id),
     moduli_extra: [...S.extra],
     generato: 'configuratore'
@@ -265,6 +284,10 @@ function buildText(){
     `Azienda: ${c.azienda||'(da indicare)'}`,
     `Settore: ${settore?settore.nome:'—'}`,
     `Colore accento: ${c.accento}`,
+    `Referente: ${c.referente||'-'}`,
+    `Email: ${c.email||'-'}  ·  Tel: ${c.telefono||'-'}`,
+    `Utenti previsti: ${c.dipendenti||'-'}`,
+    ...(c.logo?[`Logo: ${c.logo} (allega il file alla mail)`]:[]),
     `Moduli base: ${c.moduli_base.map(nm).join(', ')}`,
     `Moduli extra: ${c.moduli_extra.length?c.moduli_extra.map(nm).join(', '):'nessuno'}`,
     ...(c.modulo_su_misura?[``,`MODULO SU MISURA (da costruire):`,c.modulo_su_misura]:[]),
