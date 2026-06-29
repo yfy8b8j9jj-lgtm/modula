@@ -69,6 +69,20 @@
   details.modedit[open]>summary{border-bottom:1px solid var(--line)}
   details.modedit>div{padding:4px 12px 12px}
   .banco{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;background:rgba(168,85,247,.08);border:1px solid #A855F7;border-radius:12px;padding:14px 16px;margin-bottom:18px}
+  .tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:22px;border-bottom:1px solid var(--line)}
+  .tab{background:transparent;border:none;border-bottom:2px solid transparent;border-radius:0;color:var(--t2);padding:9px 14px;font-size:14px;font-weight:600}
+  .tab:hover{color:var(--t1);border-color:transparent}
+  .tab.on{color:var(--ac);border-bottom-color:var(--ac)}
+  .abbo-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
+  .abbo-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+  .abbo-card.warn{border-color:var(--amber)}
+  .abbo-n{font-family:'Space Grotesk';font-size:24px;font-weight:700;color:var(--ac)}
+  .abbo-card.warn .abbo-n{color:var(--amber)}
+  .abbo-l{font-size:12px;color:var(--t2);margin-top:4px}
+  .abbo-table{width:100%;border-collapse:collapse;font-size:14px}
+  .abbo-table th{text-align:left;color:var(--t3);font-size:12px;font-weight:600;padding:8px 10px;border-bottom:1px solid var(--line)}
+  .abbo-table td{padding:10px;border-bottom:1px solid var(--line)}
+  .abbo-table select{width:auto;padding:5px 8px;font-size:13px}
   .paste-box{background:var(--bg);border:1px dashed var(--ac);border-radius:10px;padding:12px 14px;margin-bottom:14px}
   .paste-box textarea{width:100%;min-height:64px;background:var(--bg2);border:1px solid var(--line2);border-radius:8px;color:var(--t1);font-family:'JetBrains Mono';font-size:12.5px;padding:9px 11px;resize:vertical}
   .center{min-height:72vh;display:flex;flex-direction:column;align-items:center;justify-content:center}
@@ -101,7 +115,8 @@ const MODULES=[
   {id:'macchine',label:'Macchine'},{id:'zone',label:'Zone'},{id:'conti',label:'Conti'},
 ];
 const mLabel=id=>{const m=MODULES.find(x=>x.id===id);return m?m.label:id;};
-const APP_URL=location.origin+location.pathname.replace(/admin\/.*/,'')+'app.html';
+const BASE=location.origin+location.pathname.replace(/\/admin(\/.*)?$/,'/');
+const APP_URL=BASE+'app.html';
 
 let session=null, isAdmin=false, authBusy=false;
 
@@ -163,35 +178,173 @@ async function doClaim(){
 }
 
 /* ---------- DASHBOARD ---------- */
+let DATA=null, TAB='aziende';
+const TABS=[
+  {id:'aziende',  label:'\u{1F3E2} Aziende clienti'},
+  {id:'banco',    label:'\u{1F9EA} Banco di prova'},
+  {id:'abbonamenti',label:'\u{1F4B3} Abbonamenti'},
+  {id:'link',     label:'\u{1F517} Link'}
+];
 async function viewDash(){
-  shell(`<div id="dash"><div class="muted">Carico le aziende…</div></div>`);
-  const{data:tenants,error}=await sb.from('tenants').select('*').order('created_at',{ascending:false});
-  if(error){$('#dash').innerHTML=`<div class="card err">${esc(error.message)}</div>`;return;}
-  // codici invito ancora DA USARE (titolare + dipendenti non ancora registrati), per tenant
+  shell(`<div id="dash"><div class="muted">Carico…</div></div>`);
+  await loadData();
+  $('#dash').innerHTML=`<div class="tabs" id="tabs"></div><div id="content"></div>`;
+  renderTabs(); renderTab();
+}
+async function loadData(){
+  const{data:tenants}=await sb.from('tenants').select('*').order('created_at',{ascending:false});
   const{data:pend}=await sb.from('employees').select('tenant_id,name,invite_code,is_owner').not('invite_code','is',null);
-  const codesByTenant={};
-  (pend||[]).forEach(e=>{(codesByTenant[e.tenant_id]=codesByTenant[e.tenant_id]||[]).push(e);});
-  // gestione cliente (contatti/piano/pagamenti) — tabella privata solo super-admin
   const{data:adm}=await sb.from('tenant_admin').select('*');
-  const admById={}; (adm||[]).forEach(a=>{admById[a.tenant_id]=a;});
-  // statistiche d'uso per azienda
   const{data:ov}=await sb.rpc('tenant_overview');
+  const codes={}; (pend||[]).forEach(e=>{(codes[e.tenant_id]=codes[e.tenant_id]||[]).push(e);});
+  const admById={}; (adm||[]).forEach(a=>{admById[a.tenant_id]=a;});
   const ovById={}; (ov||[]).forEach(o=>{ovById[o.tenant_id]=o;});
-  const all=tenants||[];
-  const banco=all.find(t=>t.slug==='banco-prova');
-  const clienti=all.filter(t=>t.slug!=='banco-prova');
-  const list=clienti.map(t=>tenantCard(t,codesByTenant[t.id]||[],admById[t.id]||{},ovById[t.id]||{})).join('')||`<div class="card muted">Nessuna azienda ancora. Creane una qui sotto ↓</div>`;
-  $('#dash').innerHTML=`
-    ${bancoPanel(banco,banco?(codesByTenant[banco.id]||[]):[])}
+  DATA={tenants:tenants||[], codes, adm:admById, ov:ovById};
+}
+function renderTabs(){ $('#tabs').innerHTML=TABS.map(t=>`<button class="tab ${TAB===t.id?'on':''}" onclick="setTab('${t.id}')">${t.label}</button>`).join(''); }
+function setTab(t){ TAB=t; renderTabs(); renderTab(); window.scrollTo({top:0}); }
+function renderTab(){
+  const c=$('#content');
+  if(TAB==='aziende') c.innerHTML=sectionAziende();
+  else if(TAB==='banco') c.innerHTML=sectionBanco();
+  else if(TAB==='abbonamenti') c.innerHTML=sectionAbbonamenti();
+  else c.innerHTML=sectionLink();
+}
+const isBench=t=>t.slug.startsWith('banco-');
+
+/* ---- sezione AZIENDE CLIENTI ---- */
+function sectionAziende(){
+  const cli=DATA.tenants.filter(t=>!isBench(t));
+  const list=cli.map(t=>tenantCard(t,DATA.codes[t.id]||[],DATA.adm[t.id]||{},DATA.ov[t.id]||{})).join('')||`<div class="card muted">Nessuna azienda cliente ancora. Creane una qui sotto.</div>`;
+  return `
     <div class="row" style="justify-content:space-between;align-items:baseline">
-      <h2>Aziende clienti <span class="muted" style="font-size:15px">(${clienti.length})</span></h2>
-      <span class="tiny">App cliente: <a href="${APP_URL}" target="_blank">${esc(APP_URL)}</a></span>
+      <h2>Aziende clienti <span class="muted" style="font-size:15px">(${cli.length})</span></h2>
+      <span class="tiny">App: <a href="${APP_URL}" target="_blank">${esc(APP_URL)}</a></span>
     </div>
-    <input id="search" placeholder="🔍 Cerca azienda per nome o slug…" oninput="filterTenants(this.value)">
+    <input id="search" placeholder="\u{1F50D} Cerca azienda per nome o slug…" oninput="filterTenants(this.value)">
     <div id="tlist">${list}</div>
     <div id="noresult" class="card muted" style="display:none">Nessuna azienda trovata.</div>
     <div class="sec">Aggiungi</div>
     <details class="newcard"><summary>+ Nuova azienda</summary>${newTenantForm()}</details>`;
+}
+
+/* ---- sezione BANCO DI PROVA (piu' prove) ---- */
+function sectionBanco(){
+  const benches=DATA.tenants.filter(isBench);
+  const cards=benches.map(b=>benchCard(b,DATA.codes[b.id]||[])).join('')||`<div class="card muted">Nessuna prova ancora. Creane una qui sotto.</div>`;
+  return `
+    <h2>Banco di prova</h2>
+    <div class="tiny" style="margin:4px 0 16px">Gestionali di test con i moduli che vuoi, separati dai clienti veri. Creane quante ne vuoi per provare configurazioni diverse.</div>
+    ${cards}
+    <div class="card" style="margin-top:14px">
+      <label>Nome della nuova prova</label>
+      <input id="nb-name" placeholder="es. Idraulico, Ristorante, Tutto acceso" style="max-width:340px">
+      <div class="tiny" style="margin:6px 0 10px">Parte con tutti i moduli accesi; poi spegni quelli che non vuoi.</div>
+      <button class="sm pri" onclick="createBanco()">Crea prova</button>
+    </div>`;
+}
+function benchCard(b,codes){
+  const oc=(codes.find(c=>c.is_owner)||{}).invite_code;
+  const mods=Array.isArray(b.modules)?b.modules:[];
+  const chipFor=m=>`<span class="chip ${mods.includes(m.id)?'on':''} ${m.lock?'lock':''}" data-m="${m.id}" ${m.lock?'':`onclick="toggleMod(this)"`}>${esc(m.label)}</span>`;
+  const active=MODULES.filter(m=>mods.includes(m.id)).map(chipFor).join('');
+  const inactive=MODULES.filter(m=>!mods.includes(m.id)).map(chipFor).join('');
+  return `<div class="banco" style="align-items:stretch"><div style="width:100%">
+    <div class="row" style="justify-content:space-between;align-items:flex-start;gap:10px">
+      <div><b>\u{1F9EA} ${esc(b.name)}</b> <span class="pill on">test</span>
+        ${oc?`<div class="tiny" style="margin-top:6px">Codice per entrare la prima volta: <b class="mono">${esc(oc)}</b></div>`:''}
+      </div>
+      <div class="row" style="gap:8px">
+        <a class="sm pri" href="${APP_URL}" target="_blank" style="text-decoration:none;display:inline-block">Apri nell'app ↗</a>
+        <button class="sm" onclick="resetBanco('${b.id}')">Azzera dati</button>
+        <button class="sm" style="border-color:var(--red);color:var(--red)" onclick="deleteTenant('${b.id}')">Elimina</button>
+      </div>
+    </div>
+    <div id="t-${b.id}" style="margin-top:12px">
+      <div class="tiny" style="margin:6px 0 4px">Moduli attivi — clicca per spegnere</div>
+      <div class="modchips">${active}</div>
+      <div class="tiny" style="margin:12px 0 4px">Moduli da attivare — clicca per accendere</div>
+      <div class="modchips">${inactive||'<span class="tiny">Tutti i moduli sono attivi.</span>'}</div>
+      <div class="row" style="margin-top:12px;align-items:center;gap:8px">
+        <button class="sm pri" onclick="saveMods('${b.id}')">Salva moduli</button>
+        <span class="ok" id="ok-${b.id}"></span>
+        <span class="tiny">poi ricarica l'app per vedere l'effetto</span>
+      </div>
+    </div>
+  </div></div>`;
+}
+async function createBanco(){
+  const nm=($('#nb-name')?$('#nb-name').value.trim():'')||'Prova';
+  const base=slugify(nm)||'prova';
+  let slug='banco-'+base;
+  if(DATA.tenants.some(t=>t.slug===slug)) slug='banco-'+base+'-'+Math.floor(Math.random()*900+100);
+  const mods=MODULES.map(m=>m.id);
+  const{data,error}=await sb.rpc('create_tenant',{p_name:nm,p_slug:slug,p_modules:mods,p_owner_name:'Tester'});
+  if(error){alert(error.message);return;}
+  if(data&&data.tenant_id)await sb.from('tenants').update({max_employees:0,accent:'#A855F7'}).eq('id',data.tenant_id);
+  TAB='banco'; viewDash();
+}
+async function resetBanco(id){
+  if(!confirm('Azzerare TUTTI i dati di questa prova (clienti, appuntamenti, note, ecc.)?\nLa prova resta, si svuotano solo i dati.'))return;
+  const tables=['clients','maintenances','appointments','pellet','sites','site_logs','attachments','client_attachments','notes','note_groups','lists','list_items','chat','call_log','expenses','maint_prices'];
+  for(const t of tables){ await sb.from(t).delete().eq('tenant_id',id); }
+  await sb.from('employees').delete().eq('tenant_id',id).eq('is_owner',false);
+  alert('Prova azzerata ✓'); viewDash();
+}
+
+/* ---- sezione ABBONAMENTI ---- */
+function sectionAbbonamenti(){
+  const cli=DATA.tenants.filter(t=>!isBench(t));
+  const rows=cli.map(t=>{const a=DATA.adm[t.id]||{};return {name:t.name,id:t.id,price:Number(a.plan_price)||0,status:a.payment_status||'in_regola',due:a.plan_due};});
+  const mrr=rows.filter(r=>r.status==='in_regola').reduce((s,r)=>s+r.price,0);
+  const insol=rows.filter(r=>r.status==='insoluto');
+  const dovuto=insol.reduce((s,r)=>s+r.price,0);
+  const chf=n=>'CHF '+Math.round(n).toLocaleString('it-CH');
+  const opt=(cur,v,l)=>`<option value="${v}" ${cur===v?'selected':''}>${l}</option>`;
+  const tr=rows.map(r=>`<tr>
+      <td>${esc(r.name)}</td>
+      <td class="mono">${r.price?chf(r.price):'—'}</td>
+      <td>${r.due?fmtDate(r.due):'—'}</td>
+      <td><select onchange="savePayStatus('${r.id}',this.value)">${opt(r.status,'in_regola','In regola')}${opt(r.status,'insoluto','Insoluto')}${opt(r.status,'sospeso','Sospeso')}</select></td>
+    </tr>`).join('')||`<tr><td colspan="4" class="muted">Nessun cliente con canone impostato. Imposta i canoni nella scheda di ogni azienda.</td></tr>`;
+  return `
+    <h2>Abbonamenti</h2>
+    <div class="tiny" style="margin:4px 0 16px">Resoconto entrate e stato pagamenti. Il canone si imposta nella scheda di ogni azienda (tab Aziende clienti).</div>
+    <div class="abbo-cards">
+      <div class="abbo-card"><div class="abbo-n">${chf(mrr)}</div><div class="abbo-l">Entrate / mese (in regola)</div></div>
+      <div class="abbo-card"><div class="abbo-n">${chf(mrr*12)}</div><div class="abbo-l">Proiezione annua</div></div>
+      <div class="abbo-card ${insol.length?'warn':''}"><div class="abbo-n">${insol.length}</div><div class="abbo-l">Insoluti${dovuto?(' · '+chf(dovuto)):''}</div></div>
+    </div>
+    <table class="abbo-table">
+      <thead><tr><th>Azienda</th><th>Canone</th><th>Scadenza</th><th>Stato pagamento</th></tr></thead>
+      <tbody>${tr}</tbody>
+    </table>`;
+}
+async function savePayStatus(id,val){
+  await sb.from('tenant_admin').upsert({tenant_id:id,payment_status:val,updated_at:new Date().toISOString()});
+  if(!DATA.adm[id])DATA.adm[id]={tenant_id:id};
+  DATA.adm[id].payment_status=val;
+  renderTab();
+}
+
+/* ---- sezione LINK ---- */
+function sectionLink(){
+  const base=BASE;
+  return `
+    <h2>Link utili</h2>
+    <div class="tiny" style="margin:4px 0 16px">I link da dare ai clienti o da tenere a portata di mano.</div>
+    ${linkCard(base+'landing/','\u{1F310} Landing','La vetrina pubblica di Modula — mandala a un potenziale cliente.')}
+    ${linkCard(base+'configuratore/','\u{1F9E9} Configuratore','Il cliente compone la sua app e ti manda la richiesta.')}
+    ${linkCard(APP_URL,'\u{1F4F1} App','Dove entrano titolari e dipendenti con il codice invito.')}`;
+}
+function linkCard(url,title,desc){
+  return `<div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+    <div><b>${title}</b><div class="tiny" style="margin:2px 0 4px">${desc}</div><div class="tiny mono" style="color:var(--t3);word-break:break-all">${esc(url)}</div></div>
+    <div class="row" style="gap:8px">
+      <a class="sm pri" href="${url}" target="_blank" style="text-decoration:none;display:inline-block">Apri ↗</a>
+      <button class="sm" onclick="navigator.clipboard.writeText('${url}')">Copia link</button>
+    </div>
+  </div>`;
 }
 function fmtDate(d){if(!d)return '—';try{return new Date(d).toLocaleDateString('it-CH',{day:'2-digit',month:'2-digit',year:'numeric'});}catch(e){return '—';}}
 function tenantCard(t,codes,adm,ov){
@@ -284,60 +437,6 @@ function filterTenants(q){
   });
   const nr=document.getElementById('noresult');if(nr)nr.style.display=shown?'none':'block';
 }
-function bancoPanel(banco,codes){
-  if(!banco){
-    return `<div class="banco">
-      <div><b>\u{1F9EA} Banco di prova</b>
-        <div class="tiny">Un gestionale di test con TUTTI i moduli, separato dai clienti veri \u2014 per provare moduli e configurazioni.</div></div>
-      <button class="sm pri" onclick="createBanco()">Crea il banco di prova</button>
-    </div>`;
-  }
-  const oc=(codes.find(c=>c.is_owner)||{}).invite_code;
-  const mods=Array.isArray(banco.modules)?banco.modules:[];
-  const chipFor=m=>`<span class="chip ${mods.includes(m.id)?'on':''} ${m.lock?'lock':''}" data-m="${m.id}" ${m.lock?'':`onclick="toggleMod(this)"`}>${esc(m.label)}</span>`;
-  const active=MODULES.filter(m=>mods.includes(m.id)).map(chipFor).join('');
-  const inactive=MODULES.filter(m=>!mods.includes(m.id)).map(chipFor).join('');
-  return `<div class="banco" style="align-items:stretch">
-    <div style="width:100%">
-      <div class="row" style="justify-content:space-between;align-items:flex-start;gap:10px">
-        <div><b>\u{1F9EA} Banco di prova</b> <span class="pill on">test</span>
-          <div class="tiny">Accendi/spegni i moduli per provare configurazioni, poi apri nell'app.</div>
-          ${oc?`<div class="tiny" style="margin-top:6px">Codice per entrare la prima volta: <b class="mono">${esc(oc)}</b></div>`:''}
-        </div>
-        <div class="row" style="gap:8px">
-          <a class="sm pri" href="${APP_URL}" target="_blank" style="text-decoration:none;display:inline-block">Apri nell'app \u2197</a>
-          <button class="sm" onclick="resetBanco('${banco.id}')">Azzera dati</button>
-        </div>
-      </div>
-      <div id="t-${banco.id}" style="margin-top:12px">
-        <div class="tiny" style="margin:6px 0 4px">Moduli attivi \u2014 clicca per spegnere</div>
-        <div class="modchips">${active}</div>
-        <div class="tiny" style="margin:12px 0 4px">Moduli da attivare \u2014 clicca per accendere</div>
-        <div class="modchips">${inactive||'<span class="tiny">Tutti i moduli sono attivi.</span>'}</div>
-        <div class="row" style="margin-top:12px;align-items:center;gap:8px">
-          <button class="sm pri" onclick="saveMods('${banco.id}')">Salva moduli</button>
-          <span class="ok" id="ok-${banco.id}"></span>
-          <span class="tiny">poi ricarica l'app per vedere l'effetto</span>
-        </div>
-      </div>
-    </div>
-  </div>`;
-}
-async function createBanco(){
-  const mods=MODULES.map(m=>m.id);
-  const{data,error}=await sb.rpc('create_tenant',{p_name:'Banco di prova',p_slug:'banco-prova',p_modules:mods,p_owner_name:'Tester'});
-  if(error){alert(error.message.includes('duplicate')?'Banco di prova già esistente':error.message);return;}
-  if(data&&data.tenant_id)await sb.from('tenants').update({max_employees:0,accent:'#A855F7'}).eq('id',data.tenant_id);
-  viewDash();
-}
-async function resetBanco(id){
-  if(!confirm('Azzerare TUTTI i dati di prova (clienti, appuntamenti, note, ecc.)?\nIl Banco di prova resta, si svuotano solo i dati.'))return;
-  const tables=['clients','maintenances','appointments','pellet','sites','site_logs','attachments','client_attachments','notes','note_groups','lists','list_items','chat','call_log','expenses','maint_prices'];
-  for(const t of tables){ await sb.from(t).delete().eq('tenant_id',id); }
-  await sb.from('employees').delete().eq('tenant_id',id).eq('is_owner',false);
-  alert('Banco di prova azzerato ✓');
-  viewDash();
-}
 function copyEl(id){const e=document.getElementById(id);if(e){e.select?e.select():0;navigator.clipboard.writeText(e.value);}}
 async function saveAdmin(id){
   const g=k=>document.getElementById(k+'-'+id);
@@ -356,6 +455,7 @@ async function saveAdmin(id){
   const{error:e1}=await sb.from('tenant_admin').upsert(row);
   const{error:e2}=await sb.from('tenants').update({accent:g('c-accent').value||'#34D399'}).eq('id',id);
   const err=e1||e2;
+  if(!err&&DATA){DATA.adm[id]=row;const tt=DATA.tenants.find(x=>x.id===id);if(tt)tt.accent=g('c-accent').value||'#34D399';}
   el.textContent=err?('⚠ '+err.message):'✓ salvato';
   if(!err)setTimeout(()=>{const x=$('#oka-'+id);if(x)x.textContent='';},2000);
 }
@@ -371,6 +471,7 @@ function toggleMod(el){el.classList.toggle('on');}
 async function saveMods(id){
   const on=[...document.querySelectorAll(`#t-${id} .chip.on`)].map(c=>c.dataset.m);
   const{error}=await sb.from('tenants').update({modules:on}).eq('id',id);
+  if(!error&&DATA){const tt=DATA.tenants.find(x=>x.id===id);if(tt)tt.modules=on;}
   $('#ok-'+id).textContent=error?('⚠ '+error.message):'✓ salvato';
   if(!error)setTimeout(()=>{const e=$('#ok-'+id);if(e)e.textContent='';},2000);
 }
