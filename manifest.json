@@ -1,8 +1,8 @@
 {
-  "name": "La tua app",
-  "short_name": "Gestionale",
-  "description": "Gestionale aziendale personalizzabile",
-  "start_url": "./",
+  "name": "Modula",
+  "short_name": "Modula",
+  "description": "Il tuo gestionale aziendale su misura",
+  "start_url": "./app.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",

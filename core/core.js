@@ -508,7 +508,7 @@ function navKey(){return 'caywork_nav_'+(S.session?S.session.empId:'x');}
 function getBottomNav(){const k=navKey();if(bottomNavMem[k])return bottomNavMem[k];try{const v=JSON.parse(localStorage.getItem(k)||'null');if(Array.isArray(v)&&v.length){bottomNavMem[k]=v;return v;}}catch(e){}return NAV_DEFAULT;}
 function setBottomNav(ids){const k=navKey();bottomNavMem[k]=ids.slice();try{localStorage.setItem(k,JSON.stringify(ids));}catch(e){}}
 function renderNav(){
-  {const bt=$('#brandtop');if(bt)bt.textContent=BRAND.name||'La tua app';}
+  {const bt=$('#brandtop');if(bt)bt.textContent=BRAND.name||'Modula';}
   const vis=visViews();
   const ps=pushState();const sep='margin-top:10px;border-top:1px solid var(--line);border-radius:0;padding-top:14px';
   const pushNav=ps==='unsupported'?''
@@ -1016,7 +1016,7 @@ function lockShell(inner,sub){
   const box=document.createElement('div');box.className='lock';
   const subLine=sub==='REGISTRAZIONE'?'Crea il tuo accesso':sub==='COLLEGA ACCOUNT'?'Collega il tuo account':sub==='SINCRONIZZAZIONE'?'Un attimo, preparo i tuoi dati…':'Bentornato 👋 — accedi al gestionale';
   box.innerHTML=`${BRAND.logo?`<img src="${BRAND.logo}" alt="${esc(BRAND.name||'')}" style="width:200px;max-width:70%;margin-bottom:6px" onerror="this.style.display='none';var f=document.getElementById('logofb');if(f)f.style.display='flex'">`:''}
-  <div id="logofb" class="llogo" style="${BRAND.logo?'display:none;':'display:flex;'}margin-bottom:6px"><span class="dot"></span>${esc(BRAND.name||'La tua app')}</div>
+  <div id="logofb" class="llogo" style="${BRAND.logo?'display:none;':'display:flex;'}margin-bottom:6px"><span class="dot"></span>${esc(BRAND.name||'Modula')}</div>
   ${BRAND.tagline?`<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="height:1px;width:26px;background:linear-gradient(90deg,transparent,#5E9E2E)"></span><span style="font-family:var(--mono);font-size:10px;letter-spacing:3px;color:var(--teal)">${esc(BRAND.tagline)}</span><span style="height:1px;width:26px;background:linear-gradient(90deg,#5BA02C,transparent)"></span></div>`:''}
   <div style="font-size:13px;color:var(--t2);margin-bottom:26px">${subLine}</div>
   <div class="lbox">${inner}</div>
