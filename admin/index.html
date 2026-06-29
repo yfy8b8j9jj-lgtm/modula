@@ -68,6 +68,7 @@
   details.modedit[open]>summary::before{content:'▾'}
   details.modedit[open]>summary{border-bottom:1px solid var(--line)}
   details.modedit>div{padding:4px 12px 12px}
+  .banco{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;background:rgba(168,85,247,.08);border:1px solid #A855F7;border-radius:12px;padding:14px 16px;margin-bottom:18px}
   .paste-box{background:var(--bg);border:1px dashed var(--ac);border-radius:10px;padding:12px 14px;margin-bottom:14px}
   .paste-box textarea{width:100%;min-height:64px;background:var(--bg2);border:1px solid var(--line2);border-radius:8px;color:var(--t1);font-family:'JetBrains Mono';font-size:12.5px;padding:9px 11px;resize:vertical}
   .center{min-height:72vh;display:flex;flex-direction:column;align-items:center;justify-content:center}
@@ -176,10 +177,14 @@ async function viewDash(){
   // statistiche d'uso per azienda
   const{data:ov}=await sb.rpc('tenant_overview');
   const ovById={}; (ov||[]).forEach(o=>{ovById[o.tenant_id]=o;});
-  const list=(tenants||[]).map(t=>tenantCard(t,codesByTenant[t.id]||[],admById[t.id]||{},ovById[t.id]||{})).join('')||`<div class="card muted">Nessuna azienda ancora. Creane una qui sotto ↓</div>`;
+  const all=tenants||[];
+  const banco=all.find(t=>t.slug==='banco-prova');
+  const clienti=all.filter(t=>t.slug!=='banco-prova');
+  const list=clienti.map(t=>tenantCard(t,codesByTenant[t.id]||[],admById[t.id]||{},ovById[t.id]||{})).join('')||`<div class="card muted">Nessuna azienda ancora. Creane una qui sotto ↓</div>`;
   $('#dash').innerHTML=`
+    ${bancoPanel(banco,banco?(codesByTenant[banco.id]||[]):[])}
     <div class="row" style="justify-content:space-between;align-items:baseline">
-      <h2>Aziende <span class="muted" style="font-size:15px">(${(tenants||[]).length})</span></h2>
+      <h2>Aziende clienti <span class="muted" style="font-size:15px">(${clienti.length})</span></h2>
       <span class="tiny">App cliente: <a href="${APP_URL}" target="_blank">${esc(APP_URL)}</a></span>
     </div>
     <input id="search" placeholder="🔍 Cerca azienda per nome o slug…" oninput="filterTenants(this.value)">
@@ -278,6 +283,41 @@ function filterTenants(q){
     if(hit)shown++;
   });
   const nr=document.getElementById('noresult');if(nr)nr.style.display=shown?'none':'block';
+}
+function bancoPanel(banco,codes){
+  if(!banco){
+    return `<div class="banco">
+      <div><b>🧪 Banco di prova</b>
+        <div class="tiny">Un gestionale di test con TUTTI i moduli, separato dai clienti veri — per provare moduli e configurazioni.</div></div>
+      <button class="sm pri" onclick="createBanco()">Crea il banco di prova</button>
+    </div>`;
+  }
+  const oc=(codes.find(c=>c.is_owner)||{}).invite_code;
+  return `<div class="banco">
+    <div><b>🧪 Banco di prova</b> <span class="pill on">tutti i moduli</span>
+      <div class="tiny">Il tuo gestionale di test — provaci configurazioni e moduli liberamente.</div>
+      ${oc?`<div class="tiny" style="margin-top:6px">Per entrare nell'app la prima volta usa il codice: <b class="mono">${esc(oc)}</b></div>`:''}
+    </div>
+    <div class="row" style="gap:8px">
+      <a class="sm pri" href="${APP_URL}" target="_blank" style="text-decoration:none;display:inline-block">Apri nell'app ↗</a>
+      <button class="sm" onclick="resetBanco('${banco.id}')">Azzera dati</button>
+    </div>
+  </div>`;
+}
+async function createBanco(){
+  const mods=MODULES.map(m=>m.id);
+  const{data,error}=await sb.rpc('create_tenant',{p_name:'Banco di prova',p_slug:'banco-prova',p_modules:mods,p_owner_name:'Tester'});
+  if(error){alert(error.message.includes('duplicate')?'Banco di prova già esistente':error.message);return;}
+  if(data&&data.tenant_id)await sb.from('tenants').update({max_employees:0,accent:'#A855F7'}).eq('id',data.tenant_id);
+  viewDash();
+}
+async function resetBanco(id){
+  if(!confirm('Azzerare TUTTI i dati di prova (clienti, appuntamenti, note, ecc.)?\nIl Banco di prova resta, si svuotano solo i dati.'))return;
+  const tables=['clients','maintenances','appointments','pellet','sites','site_logs','attachments','client_attachments','notes','note_groups','lists','list_items','chat','call_log','expenses','maint_prices'];
+  for(const t of tables){ await sb.from(t).delete().eq('tenant_id',id); }
+  await sb.from('employees').delete().eq('tenant_id',id).eq('is_owner',false);
+  alert('Banco di prova azzerato ✓');
+  viewDash();
 }
 function copyEl(id){const e=document.getElementById(id);if(e){e.select?e.select():0;navigator.clipboard.writeText(e.value);}}
 async function saveAdmin(id){
