@@ -195,6 +195,7 @@ let DATA=null, TAB='aziende';
 const TABS=[
   {id:'aziende',  label:'\u{1F3E2} Aziende clienti'},
   {id:'banco',    label:'\u{1F9EA} Banco di prova'},
+  {id:'lavoro',   label:'\u{1F6E0}️ Banco da lavoro'},
   {id:'moduli',   label:'\u{1F9F1} Moduli'},
   {id:'abbonamenti',label:'\u{1F4B3} Abbonamenti'},
   {id:'link',     label:'\u{1F517} Link'}
@@ -221,6 +222,7 @@ function renderTab(){
   const c=$('#content');
   if(TAB==='aziende') c.innerHTML=sectionAziende();
   else if(TAB==='banco') c.innerHTML=sectionBanco();
+  else if(TAB==='lavoro') c.innerHTML=sectionLavoro();
   else if(TAB==='moduli') c.innerHTML=sectionModuli();
   else if(TAB==='abbonamenti') c.innerHTML=sectionAbbonamenti();
   else c.innerHTML=sectionLink();
@@ -389,14 +391,6 @@ function linkCard(url,title,desc){
 function fmtDate(d){if(!d)return '—';try{return new Date(d).toLocaleDateString('it-CH',{day:'2-digit',month:'2-digit',year:'numeric'});}catch(e){return '—';}}
 function tenantCard(t,codes,adm,ov){
   codes=codes||[];adm=adm||{};ov=ov||{};
-  const mods=Array.isArray(t.modules)?t.modules:[];
-  const chipFor=m=>`<span class="chip ${mods.includes(m.id)?'on':''} ${m.lock?'lock':''}" data-t="${t.id}" data-m="${m.id}" ${m.lock?'':`onclick="toggleMod(this)"`}>${esc(m.label)}${m.custom?' ✦':''}</span>`;
-  // i moduli su misura si mostrano solo all'azienda proprietaria (o se gia' attivi)
-  const visibleMods=MODULES.filter(m=>!m.custom||m.custom===t.slug||mods.includes(m.id));
-  const active=visibleMods.filter(m=>mods.includes(m.id));
-  const inactive=visibleMods.filter(m=>!mods.includes(m.id));
-  const chipsActive=active.map(chipFor).join('');
-  const chipsInactive=inactive.map(chipFor).join('');
   const codeRows = codes.length
     ? codes.map(c=>`<div class="codebox"><span>${esc(c.name)}${c.is_owner?' · titolare':''}: <b>${esc(c.invite_code)}</b></span><button class="sm" onclick="navigator.clipboard.writeText('${esc(c.invite_code)}')">copia</button></div>`).join('')
     : `<div class="tiny" style="margin-top:6px">Tutti gli inviti sono già stati usati (account attivi).</div>`;
@@ -410,32 +404,18 @@ function tenantCard(t,codes,adm,ov){
       <span class="pill">${esc(t.slug)}</span>
       <span class="pill ${t.active?'on':'off'}">${t.active?'attiva':'sospesa'}</span>
       <span class="pill ${pay==='in_regola'?'on':'off'}">${pay==='in_regola'?'pag. ok':esc(pay)}</span>
-      <span class="sum-stat tiny">👤 ${ov.employees_active!=null?ov.employees_active:'?'} · 📇 ${ov.clients_count!=null?ov.clients_count:'?'}</span>
+      <span class="sum-stat tiny">\u{1F464} ${ov.employees_active!=null?ov.employees_active:'?'} · \u{1F4C7} ${ov.clients_count!=null?ov.clients_count:'?'}</span>
     </summary>
     <div class="tbody">
     <div class="stats">
-      <span>👤 ${ov.employees_active!=null?ov.employees_active:'?'} dipendenti <span class="tiny">(${ov.employees_registered||0} registrati)</span></span>
-      <span>📇 ${ov.clients_count!=null?ov.clients_count:'?'} clienti</span>
-      <span>🕑 ultima attività: ${fmtDate(ov.last_activity)}</span>
+      <span>\u{1F464} ${ov.employees_active!=null?ov.employees_active:'?'} dipendenti <span class="tiny">(${ov.employees_registered||0} registrati)</span></span>
+      <span>\u{1F4C7} ${ov.clients_count!=null?ov.clients_count:'?'} clienti</span>
+      <span>\u{1F551} ultima attività: ${fmtDate(ov.last_activity)}</span>
     </div>
-
-    <details class="modedit">
-      <summary>🧩 Moduli — <b>${active.length}</b> attivi · modifica</summary>
-      <div>
-        <div class="tiny" style="margin:8px 0 4px">Attivi — clicca per spegnere</div>
-        <div class="modchips">${chipsActive}</div>
-        <div class="tiny" style="margin:14px 0 4px">Da attivare — clicca per accendere</div>
-        <div class="modchips">${chipsInactive||'<span class="tiny">Tutti i moduli sono già attivi.</span>'}</div>
-        <div class="row" style="margin-top:12px;align-items:center;gap:8px">
-          <button class="sm pri" onclick="saveMods('${t.id}')">Salva moduli</button>
-          <span class="ok" id="ok-${t.id}"></span>
-        </div>
-      </div>
-    </details>
 
     <div class="tiny" style="margin:14px 0 4px">Codici invito da usare</div>
     ${codeRows}
-    ${inviteMsg?`<button class="sm" style="margin-top:8px" onclick="copyEl('msg-${t.id}')">📋 Copia messaggio d'invito pronto</button><textarea id="msg-${t.id}" style="position:absolute;left:-9999px">${esc(inviteMsg)}</textarea>`:''}
+    ${inviteMsg?`<button class="sm" style="margin-top:8px" onclick="copyEl('msg-${t.id}')">\u{1F4CB} Copia messaggio d'invito pronto</button><textarea id="msg-${t.id}" style="position:absolute;left:-9999px">${esc(inviteMsg)}</textarea>`:''}
 
     <div class="adminbox">
       <div class="sec" style="margin:0 0 10px">Gestione cliente <span class="tiny">(privato, solo tu)</span></div>
@@ -443,7 +423,6 @@ function tenantCard(t,codes,adm,ov){
         <div><label>Referente</label><input id="c-person-${t.id}" value="${esc(adm.contact_person||'')}" placeholder="Es. Marco Rossi"></div>
         <div><label>Telefono</label><input id="c-phone-${t.id}" value="${esc(adm.contact_phone||'')}" placeholder="+41 …"></div>
         <div><label>Email</label><input id="c-email-${t.id}" value="${esc(adm.contact_email||'')}" placeholder="cliente@email.ch"></div>
-        <div><label>Colore app</label><input id="c-accent-${t.id}" type="color" value="${esc(t.accent||'#34D399')}" style="height:40px;padding:4px"></div>
         <div><label>Canone CHF/mese</label><input id="c-price-${t.id}" type="number" min="0" step="1" value="${adm.plan_price!=null?adm.plan_price:''}" placeholder="59"></div>
         <div><label>Scadenza / rinnovo</label><input id="c-due-${t.id}" type="date" value="${adm.plan_due||''}"></div>
         <div><label>Stato pagamento</label><select id="c-pay-${t.id}">${opt('in_regola','In regola')}${opt('insoluto','Insoluto')}${opt('sospeso','Sospeso')}</select></div>
@@ -452,6 +431,7 @@ function tenantCard(t,codes,adm,ov){
       <div class="row" style="margin-top:10px;align-items:center;gap:8px">
         <button class="sm pri" onclick="saveAdmin('${t.id}')">Salva gestione</button>
         <span class="ok" id="oka-${t.id}"></span>
+        <span class="tiny">colore, logo e moduli → tab «Banco da lavoro»</span>
       </div>
     </div>
 
@@ -469,6 +449,7 @@ function tenantCard(t,codes,adm,ov){
     </div>
   </details>`;
 }
+
 function filterTenants(q){
   q=(q||'').trim().toLowerCase();
   let shown=0;
@@ -478,6 +459,70 @@ function filterTenants(q){
     if(hit)shown++;
   });
   const nr=document.getElementById('noresult');if(nr)nr.style.display=shown?'none':'block';
+}
+/* ---- sezione BANCO DA LAVORO (personalizzazione app) ---- */
+function sectionLavoro(){
+  const cli=DATA.tenants.filter(t=>!isBench(t));
+  const list=cli.map(workbenchCard).join('')||`<div class="card muted">Nessuna azienda. Creala nel tab «Aziende clienti».</div>`;
+  return `
+    <div class="row" style="justify-content:space-between;align-items:baseline">
+      <h2>Banco da lavoro <span class="muted" style="font-size:15px">(${cli.length})</span></h2>
+    </div>
+    <div class="tiny" style="margin:4px 0 14px">Personalizza l'app di ogni cliente: colore, logo, moduli e dati.</div>
+    <input id="search" placeholder="\u{1F50D} Cerca azienda…" oninput="filterTenants(this.value)">
+    <div id="tlist">${list}</div>
+    <div id="noresult" class="card muted" style="display:none">Nessuna azienda trovata.</div>`;
+}
+function workbenchCard(t){
+  const mods=Array.isArray(t.modules)?t.modules:[];
+  const chipFor=m=>`<span class="chip ${mods.includes(m.id)?'on':''} ${m.lock?'lock':''}" data-m="${m.id}" ${m.lock?'':`onclick="toggleMod(this)"`}>${esc(m.label)}${m.custom?' ✦':''}</span>`;
+  const visibleMods=MODULES.filter(m=>!m.custom||m.custom===t.slug||mods.includes(m.id));
+  const active=visibleMods.filter(m=>mods.includes(m.id)).map(chipFor).join('');
+  const inactive=visibleMods.filter(m=>!mods.includes(m.id)).map(chipFor).join('');
+  const nAtt=visibleMods.filter(m=>mods.includes(m.id)).length;
+  return `<details class="tenant" id="t-${t.id}" data-search="${esc((t.name+' '+t.slug).toLowerCase())}">
+    <summary>
+      <span class="tname">${esc(t.name)}</span>
+      <span class="pill">${esc(t.slug)}</span>
+      <span class="sum-stat tiny" style="display:inline-flex;gap:7px;align-items:center"><span style="width:13px;height:13px;border-radius:3px;background:${esc(t.accent||'#34D399')};display:inline-block"></span>${nAtt} moduli</span>
+    </summary>
+    <div class="tbody">
+      <div class="adminbox">
+        <div class="sec" style="margin:0 0 10px">Aspetto</div>
+        <div class="grid2">
+          <div><label>Colore app</label><input id="lk-accent-${t.id}" type="color" value="${esc(t.accent||'#34D399')}" style="height:40px;padding:4px"></div>
+          <div><label>Logo (URL)</label><input id="lk-logo-${t.id}" value="${esc(t.logo||'')}" placeholder="https://… o vuoto"></div>
+        </div>
+        <div class="row" style="margin-top:10px;align-items:center;gap:8px">
+          <button class="sm pri" onclick="saveLook('${t.id}')">Salva aspetto</button>
+          <span class="ok" id="okl-${t.id}"></span>
+        </div>
+      </div>
+      <div class="sec">Moduli</div>
+      <div class="tiny" style="margin:0 0 4px">Attivi — clicca per spegnere</div>
+      <div class="modchips">${active}</div>
+      <div class="tiny" style="margin:12px 0 4px">Da attivare — clicca per accendere</div>
+      <div class="modchips">${inactive||'<span class="tiny">Tutti i moduli sono attivi.</span>'}</div>
+      <div class="row" style="margin-top:12px;align-items:center;gap:8px">
+        <button class="sm pri" onclick="saveMods('${t.id}')">Salva moduli</button>
+        <span class="ok" id="ok-${t.id}"></span>
+      </div>
+      <div class="sec">Dati</div>
+      <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap">
+        <a class="sm pri" href="${APP_URL}" target="_blank" style="text-decoration:none;display:inline-block">Apri app ↗</a>
+        <span class="tiny">i dati si inseriscono o si importano dentro l'app (menu «Importa dati», solo titolare)</span>
+      </div>
+    </div>
+  </details>`;
+}
+async function saveLook(id){
+  const acc=document.getElementById('lk-accent-'+id).value||'#34D399';
+  const logo=document.getElementById('lk-logo-'+id).value.trim();
+  const{error}=await sb.from('tenants').update({accent:acc,logo:logo}).eq('id',id);
+  if(!error&&DATA){const tt=DATA.tenants.find(x=>x.id===id);if(tt){tt.accent=acc;tt.logo=logo;}}
+  const el=document.getElementById('okl-'+id);
+  el.textContent=error?('⚠ '+error.message):'✓ salvato';
+  if(!error)setTimeout(()=>{const x=document.getElementById('okl-'+id);if(x)x.textContent='';},2000);
 }
 function copyEl(id){const e=document.getElementById(id);if(e){e.select?e.select():0;navigator.clipboard.writeText(e.value);}}
 async function saveAdmin(id){
@@ -494,10 +539,8 @@ async function saveAdmin(id){
     updated_at:new Date().toISOString()
   };
   const el=$('#oka-'+id);el.textContent='…';
-  const{error:e1}=await sb.from('tenant_admin').upsert(row);
-  const{error:e2}=await sb.from('tenants').update({accent:g('c-accent').value||'#34D399'}).eq('id',id);
-  const err=e1||e2;
-  if(!err&&DATA){DATA.adm[id]=row;const tt=DATA.tenants.find(x=>x.id===id);if(tt)tt.accent=g('c-accent').value||'#34D399';}
+  const{error:err}=await sb.from('tenant_admin').upsert(row);
+  if(!err&&DATA){DATA.adm[id]=row;}
   el.textContent=err?('⚠ '+err.message):'✓ salvato';
   if(!err)setTimeout(()=>{const x=$('#oka-'+id);if(x)x.textContent='';},2000);
 }
