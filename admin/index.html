@@ -506,7 +506,16 @@ function workbenchCard(t){
         <div class="sec" style="margin:0 0 10px">Aspetto</div>
         <div class="grid2">
           <div><label>Colore app</label><input id="lk-accent-${t.id}" type="color" value="${esc(t.accent||'#34D399')}" style="height:40px;padding:4px"></div>
-          <div><label>Logo (URL)</label><input id="lk-logo-${t.id}" value="${esc(t.logo||'')}" placeholder="https://… o vuoto"></div>
+          <div><label>Logo (foto)</label>
+            <div class="row" style="align-items:center;gap:10px">
+              <img id="lk-prev-${t.id}" src="${esc(t.logo||'')}" alt="" style="width:44px;height:44px;border-radius:9px;object-fit:cover;border:1px solid var(--line2);background:var(--bg2);${t.logo?'':'display:none'}">
+              <button class="sm" onclick="document.getElementById('lk-file-${t.id}').click()">Carica foto</button>
+              ${t.logo?`<button class="sm" onclick="clearLogo('${t.id}')">Togli</button>`:''}
+              <input type="file" id="lk-file-${t.id}" accept="image/*" style="display:none" onchange="uploadLogo(this,'${t.id}')">
+            </div>
+            <input type="hidden" id="lk-logo-${t.id}" value="${esc(t.logo||'')}">
+            <div class="tiny" style="margin-top:5px">Diventa anche l'icona dell'app sulla home del telefono.</div>
+          </div>
         </div>
         <div class="row" style="margin-top:10px;align-items:center;gap:8px">
           <button class="sm pri" onclick="saveLook('${t.id}')">Salva aspetto</button>
@@ -529,6 +538,33 @@ function workbenchCard(t){
       </div>
     </div>
   </details>`;
+}
+function uploadLogo(input,id){
+  const f=input.files&&input.files[0]; if(!f)return;
+  if(f.size>8*1024*1024){alert('Immagine troppo grande (max 8 MB)');return;}
+  const fr=new FileReader();
+  fr.onload=()=>{
+    const img=new Image();
+    img.onload=()=>{
+      const SZ=192; // icona quadrata
+      const c=document.createElement('canvas');c.width=SZ;c.height=SZ;
+      const ctx=c.getContext('2d');
+      const scale=Math.max(SZ/img.width,SZ/img.height);
+      const w=img.width*scale,h=img.height*scale;
+      ctx.drawImage(img,(SZ-w)/2,(SZ-h)/2,w,h);
+      const data=c.toDataURL('image/png');
+      document.getElementById('lk-logo-'+id).value=data;
+      const prev=document.getElementById('lk-prev-'+id);
+      if(prev){prev.src=data;prev.style.display='';}
+    };
+    img.onerror=()=>alert('File immagine non valido');
+    img.src=fr.result;
+  };
+  fr.readAsDataURL(f);
+}
+function clearLogo(id){
+  document.getElementById('lk-logo-'+id).value='';
+  const prev=document.getElementById('lk-prev-'+id);if(prev){prev.src='';prev.style.display='none';}
 }
 async function saveLook(id){
   const acc=document.getElementById('lk-accent-'+id).value||'#34D399';

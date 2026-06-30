@@ -25,7 +25,7 @@ const MODS = [
    f:['Incassi e spese aggiornati in tempo reale','Categorie e spese ricorrenti','Utile del mese a colpo d’occhio','Export pulito per il commercialista']},
   {id:'man', ic:'🔧', nm:'Manutenzioni', px:19, pitch:'Interventi, assistenza e storico, senza più foglietti.',
    f:['Programmi l’intervento e lo assegni al tecnico','Stato: da fare · in corso · fatta','Bollettino e firma del cliente sul telefono','Storico completo per cliente e per impianto']},
-  {id:'macchine', ic:'⚙️', nm:'Macchine / Impianti', px:19, pitch:'Il parco macchine con schede e scadenze.',
+  {id:'macchine', ic:'⚙️', nm:'Macchine / Impianti', px:19, custom:true, pitch:'Il parco macchine con schede e scadenze.',
    f:['Scheda tecnica per ogni macchina','Scadenze di assistenza e revisione','Storico interventi per impianto','Collega la macchina al cliente']},
   {id:'pellet', ic:'🪵', nm:'Consegne', px:19, pitch:'Consegne, bolle e firma, dal telefono.',
    f:['Consegne programmate con quantità e prezzo','Firma del cliente direttamente sullo schermo','Stato: da consegnare · consegnato','Organizza i giri della giornata']},
@@ -39,8 +39,8 @@ const MODS = [
 ];
 
 const MOD = id => MODS.find(m=>m.id===id);
-const READY = MODS.filter(m=>m.px>=0);
-const EXTRA = MODS.filter(m=>m.px>0);
+const READY = MODS.filter(m=>m.px>=0 && !m.custom);
+const EXTRA = MODS.filter(m=>m.px>0 && !m.custom);
 
 /* ---- mini anteprima telefono per un modulo (mostra le sue funzioni come righe app) ---- */
 function phoneFor(m){
@@ -59,7 +59,7 @@ function initExplorer(){
   if(!list||!detail) return;
   const tagFor = m => m.px===0?'INCLUSO NELLA BASE':m.px>0?`MODULO · CHF ${m.px}/mese`:'IN ARRIVO';
   const pxChip = m => m.px===0?'<span class="ed-px base">incluso</span>':m.px>0?`<span class="ed-px">CHF ${m.px}/mese</span>`:'<span class="ed-px soon">in arrivo</span>';
-  list.innerHTML = MODS.map((m,i)=>`<button class="exp-item ${i===0?'on':''}" data-id="${m.id}">
+  list.innerHTML = MODS.filter(m=>!m.custom).map((m,i)=>`<button class="exp-item ${i===0?'on':''}" data-id="${m.id}">
     <span class="ei-ic">${m.ic}</span>
     <div><div class="ei-nm">${escapeH(m.nm)}</div><div class="ei-tag">${tagFor(m)}</div></div>
     <span class="ei-px ${m.px===0?'base':''}">${m.px===0?'incluso':m.px>0?'CHF '+m.px:'⏳'}</span>

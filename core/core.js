@@ -35,7 +35,7 @@ const seatFull=()=>MAX_EMP!=null && seatCount()>=MAX_EMP;
 /* viste visibili = permesso utente (can) ∩ modulo attivo per il tenant */
 function visViews(){return VIEWS.filter(v=>v.id==='hub'||v.id==='notif'||((v.id==='zone'?can('clients'):can(v.id))&&moduleActive(v.id)));}
 
-const APP_VERSION='2026.06.30-101553';
+const APP_VERSION='2026.06.30-105010';
 
 const blank=()=>({clients:[],employees:[],notes:[],noteGroups:[],appointments:[],maintenances:[],pellet:[],sites:[],chat:[],lists:[],callLog:[],expenses:[],maintPrices:[],settings:{bagsPerPallet:70,companyName:'',pricePerTon:null,pricePerBag:null},speaker:null,session:null});
 let S=blank();
@@ -1085,7 +1085,25 @@ async function loadTenant(tenantId){
     MAX_EMP=(typeof t.max_employees==='number'&&t.max_employees>0)?t.max_employees:null; /* 0 o assente = illimitato (es. piano Tutto compreso) */
     if(t.accent){document.documentElement.style.setProperty('--cy',t.accent);document.documentElement.style.setProperty('--accent',t.accent);}
     if(BRAND.name)document.title=BRAND.name;
+    applyBrandIcon(BRAND.logo);
   }catch(e){console.error('loadTenant',e);}
+}
+/* Usa il logo del cliente come icona dell'app sulla home (PWA): apple-touch-icon per iOS,
+   manifest dinamico per Android/Chrome. Gli installati esistenti aggiornano l'icona solo reinstallando. */
+function applyBrandIcon(logo){
+  if(!logo)return;
+  try{
+    let at=document.querySelector('link[rel="apple-touch-icon"]');
+    if(!at){at=document.createElement('link');at.rel='apple-touch-icon';document.head.appendChild(at);}
+    at.href=logo;
+    const nm=BRAND.name||'Modula';
+    const man={name:nm,short_name:nm.slice(0,18),start_url:'./app.html',scope:'./',display:'standalone',orientation:'portrait',background_color:'#F5F2EA',theme_color:BRAND.accent||'#F5F2EA',
+      icons:[{src:logo,sizes:'192x192',type:'image/png',purpose:'any maskable'}]};
+    const url=URL.createObjectURL(new Blob([JSON.stringify(man)],{type:'application/manifest+json'}));
+    let link=document.querySelector('link[rel="manifest"]');
+    if(!link){link=document.createElement('link');link.rel='manifest';document.head.appendChild(link);}
+    link.href=url;
+  }catch(e){/* ignora */}
 }
 async function postAuth(){
   try{
