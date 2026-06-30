@@ -35,7 +35,7 @@ const seatFull=()=>MAX_EMP!=null && seatCount()>=MAX_EMP;
 /* viste visibili = permesso utente (can) ∩ modulo attivo per il tenant */
 function visViews(){return VIEWS.filter(v=>v.id==='hub'||v.id==='notif'||((v.id==='zone'?can('clients'):can(v.id))&&moduleActive(v.id)));}
 
-const APP_VERSION='2026.06.30-105010';
+const APP_VERSION='2026.06.30-105817';
 
 const blank=()=>({clients:[],employees:[],notes:[],noteGroups:[],appointments:[],maintenances:[],pellet:[],sites:[],chat:[],lists:[],callLog:[],expenses:[],maintPrices:[],settings:{bagsPerPallet:70,companyName:'',pricePerTon:null,pricePerBag:null},speaker:null,session:null});
 let S=blank();
@@ -1376,6 +1376,7 @@ function demoBoot(){
   const oid=uid(),e2=uid(),c1=uid(),c2=uid(),c3=uid();const t=todayIso();const now=Date.now();
   S=blank();
   BRAND={name:'Demo Impianti Verdi',tagline:'gestionale dimostrativo',logo:''};
+  ACTIVE_MODULES=['cal','notes','clients','emps','man','pellet','sites','zone','conti']; /* demo: moduli mostrati (Macchine escluso, e' su misura di ptek) */
   {const bt=document.getElementById('brandtop');if(bt)bt.textContent=BRAND.name;}document.title=BRAND.name;
   S.employees=[
     {id:oid,name:'Tu (demo)',role:'Titolare',phone:'',perms:[],isOwner:true,active:true},
