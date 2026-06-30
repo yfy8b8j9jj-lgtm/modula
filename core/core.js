@@ -35,7 +35,7 @@ const seatFull=()=>MAX_EMP!=null && seatCount()>=MAX_EMP;
 /* viste visibili = permesso utente (can) ∩ modulo attivo per il tenant */
 function visViews(){return VIEWS.filter(v=>v.id==='hub'||v.id==='notif'||((v.id==='zone'?can('clients'):can(v.id))&&moduleActive(v.id)));}
 
-const APP_VERSION='2026.06.30-112459';
+const APP_VERSION='2026.06.30-113212';
 
 const blank=()=>({clients:[],employees:[],notes:[],noteGroups:[],appointments:[],maintenances:[],pellet:[],sites:[],chat:[],lists:[],callLog:[],expenses:[],maintPrices:[],settings:{bagsPerPallet:70,companyName:'',pricePerTon:null,pricePerBag:null},speaker:null,session:null});
 let S=blank();
@@ -1058,17 +1058,43 @@ function renderLock(){
       <div class="llink" onclick="logout()">← Esci</div>`,'COLLEGA ACCOUNT');
     return;
   }
+  if(authMode==='reset'){
+    lockShell(`
+      <div style="font-size:13.5px;color:var(--t2);margin-bottom:14px;text-align:center">Imposta la tua nuova password</div>
+      <input id="lk-pass" class="txt" type="password" placeholder="Nuova password (min 6)" autocomplete="new-password" onkeydown="if(event.key==='Enter')doSetNewPassword()">
+      <div class="lerr" id="lk-err"></div>
+      <button class="btn pri" style="width:100%" onclick="doSetNewPassword()">Salva password</button>`,'GESTIONALE');
+    setTimeout(()=>{const f=$('#lk-pass');if(f)f.focus();},80);
+    return;
+  }
   const reg=authMode==='signup';
   lockShell(`
     <input id="lk-email" class="txt" type="email" placeholder="Email" autocomplete="email">
     <input id="lk-pass" class="txt" type="password" placeholder="Password (min 6)" autocomplete="${reg?'new-password':'current-password'}" onkeydown="if(event.key==='Enter')${reg?'doSignup()':'doLogin()'}">
     <div class="lerr" id="lk-err"></div>
     <button class="btn pri" style="width:100%" onclick="${reg?'doSignup()':'doLogin()'}">${reg?'Crea account':'Entra'}</button>
-    <div class="llink" onclick="authMode='${reg?'login':'signup'}';renderLock()">${reg?'← Ho già un account':'Prima volta? Registrati →'}</div>`,
+    <div class="llink" onclick="authMode='${reg?'login':'signup'}';renderLock()">${reg?'← Ho già un account':'Prima volta? Registrati →'}</div>
+    ${reg?'':`<div class="llink" onclick="doForgot()" style="margin-top:6px;opacity:.85">Password dimenticata?</div>`}`,
     reg?'REGISTRAZIONE':'GESTIONALE');
   setTimeout(()=>{const f=$('#lk-email');if(f)f.focus();},80);
 }
 function lockErr(m){const e=$('#lk-err');if(e)e.textContent=m;authBusy=false;}
+async function doForgot(){
+  const email=($('#lk-email')?$('#lk-email').value.trim():'');
+  if(!email)return lockErr('Scrivi prima la tua email, poi tocca «Password dimenticata»');
+  const{error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});
+  if(error)return lockErr(error.message);
+  lockShell(`<div style="text-align:center;color:var(--t2);font-size:14px;line-height:1.6;padding:8px 0">📧 Email inviata a<br><b style="color:var(--t1)">${esc(email)}</b><br>Apri il link nell'email e potrai impostare una nuova password.</div><div class="llink" onclick="authMode='login';renderLock()" style="margin-top:14px">← Torna al login</div>`,'GESTIONALE');
+}
+async function doSetNewPassword(){
+  if(authBusy)return;authBusy=true;
+  const pw=$('#lk-pass')?$('#lk-pass').value:'';
+  if(pw.length<6)return lockErr('Almeno 6 caratteri');
+  const{error}=await sb.auth.updateUser({password:pw});
+  if(error)return lockErr(error.message);
+  authBusy=false;try{toast('✓ Password aggiornata');}catch(e){}
+  authMode='loading';renderLock();await postAuth();
+}
 async function doLogin(){
   if(authBusy)return;authBusy=true;
   const email=$('#lk-email').value.trim(),pass=$('#lk-pass').value;
@@ -1431,9 +1457,14 @@ function demoBoot(){
 /* ================= BOOT ================= */
 (async()=>{
   if(DEMO){ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',demoBoot);else demoBoot(); return; }
+  let recovering=false;
+  sb.auth.onAuthStateChange((event)=>{ if(event==='PASSWORD_RECOVERY'){ recovering=true; authMode='reset'; renderLock(); } });
   try{
+    // se si arriva da un link di recupero password, l'hash contiene type=recovery
+    if(/type=recovery/.test(location.hash)){ authMode='reset'; renderLock(); }
     const{data:{session}}=await sb.auth.getSession();
-    if(session){postAuth();}else{renderLock();}
+    if(recovering||/type=recovery/.test(location.hash)){ /* aspetta che l'utente imposti la nuova password */ }
+    else if(session){postAuth();}else{renderLock();}
   }catch(e){renderLock();}
   setTimeout(checkUpdate,4000);
 })();
