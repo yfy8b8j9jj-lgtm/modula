@@ -29,12 +29,13 @@ const moduleActive=id=>!ACTIVE_MODULES||id==='hub'||id==='notif'||ACTIVE_MODULES
 let MAX_EMP=null;
 /* id dell'azienda loggata: prefisso delle cartelle Storage (isolamento file per tenant). */
 let TENANT_ID=null;
+let TENANT_ACTIVE=true;  /* false = azienda sospesa (es. non paga): l'app blocca l'accesso */
 const seatCount=()=>S.employees.filter(e=>e.active!==false).length;
 const seatFull=()=>MAX_EMP!=null && seatCount()>=MAX_EMP;
 /* viste visibili = permesso utente (can) ∩ modulo attivo per il tenant */
 function visViews(){return VIEWS.filter(v=>v.id==='hub'||v.id==='notif'||((v.id==='zone'?can('clients'):can(v.id))&&moduleActive(v.id)));}
 
-const APP_VERSION='2026.06.30-092933';
+const APP_VERSION='2026.06.30-101553';
 
 const blank=()=>({clients:[],employees:[],notes:[],noteGroups:[],appointments:[],maintenances:[],pellet:[],sites:[],chat:[],lists:[],callLog:[],expenses:[],maintPrices:[],settings:{bagsPerPallet:70,companyName:'',pricePerTon:null,pricePerBag:null},speaker:null,session:null});
 let S=blank();
@@ -1078,6 +1079,7 @@ async function loadTenant(tenantId){
   try{
     const{data:t}=await sb.from('tenants').select('*').eq('id',tenantId).maybeSingle();
     if(!t)return;
+    TENANT_ACTIVE=t.active!==false;
     BRAND={name:t.name||'',tagline:t.tagline||'',logo:t.logo||''};
     ACTIVE_MODULES=Array.isArray(t.modules)?t.modules:(t.modules?JSON.parse(t.modules):[]);
     MAX_EMP=(typeof t.max_employees==='number'&&t.max_employees>0)?t.max_employees:null; /* 0 o assente = illimitato (es. piano Tutto compreso) */
@@ -1096,6 +1098,7 @@ async function postAuth(){
     if(!emp.active){await sb.auth.signOut();authMode='login';renderLock();setTimeout(()=>lockErr('Accesso disattivato dal titolare'),100);return;}
     TENANT_ID=emp.tenant_id;
     await loadTenant(emp.tenant_id);
+    if(!TENANT_ACTIVE){await sb.auth.signOut();authMode='login';renderLock();setTimeout(()=>lockErr('Account sospeso — contatta Modula per riattivarlo'),100);return;}
     await loadAll();
     const my=byId(S.employees,emp.id)||MAPS.employees.fromDb(emp);
     if(!byId(S.employees,emp.id))S.employees.push(my);

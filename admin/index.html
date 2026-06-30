@@ -322,18 +322,21 @@ async function resetBanco(id){
 /* ---- sezione ABBONAMENTI ---- */
 function sectionAbbonamenti(){
   const cli=DATA.tenants.filter(t=>!isBench(t));
-  const rows=cli.map(t=>{const a=DATA.adm[t.id]||{};return {name:t.name,id:t.id,price:Number(a.plan_price)||0,status:a.payment_status||'in_regola',due:a.plan_due};});
+  const rows=cli.map(t=>{const a=DATA.adm[t.id]||{};return {name:t.name,id:t.id,price:Number(a.plan_price)||0,status:a.payment_status||'in_regola',due:a.plan_due,active:t.active!==false};});
   const mrr=rows.filter(r=>r.status==='in_regola').reduce((s,r)=>s+r.price,0);
   const insol=rows.filter(r=>r.status==='insoluto');
   const dovuto=insol.reduce((s,r)=>s+r.price,0);
   const chf=n=>'CHF '+Math.round(n).toLocaleString('it-CH');
   const opt=(cur,v,l)=>`<option value="${v}" ${cur===v?'selected':''}>${l}</option>`;
   const tr=rows.map(r=>`<tr>
-      <td>${esc(r.name)}</td>
+      <td>${esc(r.name)}${r.active?'':' <span class="pill off">sospesa</span>'}</td>
       <td class="mono">${r.price?chf(r.price):'—'}</td>
       <td>${r.due?fmtDate(r.due):'—'}</td>
       <td><select onchange="savePayStatus('${r.id}',this.value)">${opt(r.status,'in_regola','In regola')}${opt(r.status,'insoluto','Insoluto')}${opt(r.status,'sospeso','Sospeso')}</select></td>
-    </tr>`).join('')||`<tr><td colspan="4" class="muted">Nessun cliente con canone impostato. Imposta i canoni nella scheda di ogni azienda.</td></tr>`;
+      <td>${r.active
+        ? `<button class="sm" onclick="toggleActive('${r.id}','false')">🔒 Blocca</button>`
+        : `<button class="sm" style="border-color:var(--amber);color:var(--amber)" onclick="toggleActive('${r.id}','true')">🔓 Sblocca</button>`}</td>
+    </tr>`).join('')||`<tr><td colspan="5" class="muted">Nessun cliente con canone impostato. Imposta i canoni nella scheda di ogni azienda.</td></tr>`;
   return `
     <h2>Abbonamenti</h2>
     <div class="tiny" style="margin:4px 0 16px">Resoconto entrate e stato pagamenti. Il canone si imposta nella scheda di ogni azienda (tab Aziende clienti).</div>
@@ -343,7 +346,7 @@ function sectionAbbonamenti(){
       <div class="abbo-card ${insol.length?'warn':''}"><div class="abbo-n">${insol.length}</div><div class="abbo-l">Insoluti${dovuto?(' · '+chf(dovuto)):''}</div></div>
     </div>
     <table class="abbo-table">
-      <thead><tr><th>Azienda</th><th>Canone</th><th>Scadenza</th><th>Stato pagamento</th></tr></thead>
+      <thead><tr><th>Azienda</th><th>Canone</th><th>Scadenza</th><th>Stato pagamento</th><th>App</th></tr></thead>
       <tbody>${tr}</tbody>
     </table>`;
 }
