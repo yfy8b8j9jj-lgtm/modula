@@ -159,10 +159,28 @@ function updCount(){ const c=$('.count'); if(c) c.textContent=`${MODULI_BASE.len
 /* ---------------- STEP 4 — anteprima + invio ---------------- */
 function chosenMods(){ return [...MODULI_BASE, ...MODULI_EXTRA.filter(m=>S.extra.has(m.id))]; }
 
+/* ---- prezzo (stesso listino della landing) ---- */
+const MOD_TIER={conti:15, man:25, macchine:25, pellet:25, sites:39, zone:39};
+const tierPrezzo=id=>MOD_TIER[id]||25;
+function calcPrezzo(){
+  const extra=[...S.extra].filter(id=>{const m=modById(id);return m && m.stato!=='arrivo' && !m.custom;});
+  const modSum=extra.reduce((s,id)=>s+tierPrezzo(id),0);
+  const n=extra.length;
+  const sconto=n>=6?0.15:(n>=3?0.10:0);
+  const dip=parseInt(S.dipendenti)||0;
+  const utentiExtra=Math.max(0,dip-4);
+  const costoUtenti=utentiExtra*4;
+  const canone=Math.round(59+modSum*(1-sconto))+costoUtenti;
+  return {modSum, sconto, canone, utentiExtra, costoUtenti, custom:!!S.richiesta.trim()};
+}
+
 function step4(){
   const nome = S.azienda.trim() || 'La tua app';
   const settore = byId(SETTORI,S.settore);
   const extraChosen = MODULI_EXTRA.filter(m=>S.extra.has(m.id));
+  const P = calcPrezzo();
+  const extraPriceRows = extraChosen.filter(m=>m.stato!=='arrivo'&&!m.custom)
+    .map(m=>`<div class="rowl"><span class="k">${esc(m.nome.toUpperCase())}</span><span>+ CHF ${tierPrezzo(m.id)} / mese</span></div>`).join('');
   // assicura una schermata valida selezionata
   const validi = new Set([...chosenMods().map(m=>m.id),'altro']);
   if(!validi.has(S.previewView)) S.previewView='hub';
@@ -181,9 +199,20 @@ function step4(){
     <div class="rowl"><span class="k">EXTRA</span><div class="chips">${extraChosen.length?extraChosen.map(m=>`<span class="chip">${m.ic} ${esc(m.nome)}${m.stato==='arrivo'?' · in arrivo':''}</span>`).join(''):'<span class="cs" style="color:var(--t3)">nessuno</span>'}</div></div>
     ${S.richiesta.trim()?`<div class="rowl"><span class="k">SU MISURA</span><div class="chips"><span class="chip" style="white-space:normal;line-height:1.45;text-align:left">✨ ${esc(S.richiesta.trim())}</span></div></div>`:''}
 
+    <div style="margin-top:18px;border-top:1px solid var(--line);padding-top:16px">
+      <h3>💳 Il tuo abbonamento</h3>
+      <div class="rowl"><span class="k">CANONE BASE</span><span>CHF 59 / mese</span></div>
+      ${extraPriceRows}
+      ${P.utentiExtra?`<div class="rowl"><span class="k">+${P.utentiExtra} UTENTI</span><span>+ CHF ${P.costoUtenti} / mese</span></div>`:''}
+      ${P.sconto?`<div class="rowl"><span class="k">SCONTO VOLUME</span><span>− ${Math.round(P.sconto*100)}%</span></div>`:''}
+      <div class="rowl" style="border-top:1px solid var(--line);margin-top:6px;padding-top:10px"><span class="k" style="color:var(--t1);font-weight:700">TOTALE MENSILE</span><span style="font-weight:700;font-size:18px;color:var(--t1)">CHF ${P.canone} / mese</span></div>
+      <div class="rowl"><span class="k">ATTIVAZIONE</span><span>CHF 690 una tantum <span style="color:var(--t3);font-size:12px">· progettazione iniziale</span></span></div>
+      ${P.custom?`<div class="rowl"><span class="k" style="color:var(--amber)">MODULO SU MISURA</span><span style="text-align:right;color:var(--amber)">da concordare insieme<br><span style="font-size:12px">ti contatto io · si paga una volta sola</span></span></div>`:''}
+    </div>
+
     <div class="send-box">
-      <h3>📨 Invia la tua configurazione</h3>
-      <p>Te la prepariamo e ti ricontattiamo. Nessun dato viene salvato online.</p>
+      <h3>📨 ${P.custom?'Parliamone':'Invia la richiesta'}</h3>
+      <p>${P.custom?'Hai chiesto un modulo su misura: ti contatto io per progettarlo e concordare il prezzo prima di procedere. Intanto inviami la configurazione.':'Inviami la configurazione: ti preparo l\'app e ti mando il link per pagare. Oppure contattami per qualsiasi domanda. Nessun dato viene salvato online.'}</p>
       <div class="send-actions">
         <button class="btn pri" onclick="sendEmail()">✉️ Invia via Email</button>
         ${CONTATTO.whatsapp?`<button class="btn" onclick="sendWhatsApp()">💬 WhatsApp</button>`:''}
@@ -278,6 +307,7 @@ function buildConfig(){
 function buildText(){
   const c = buildConfig();
   const settore = byId(SETTORI,S.settore);
+  const P = calcPrezzo();
   const nm = id => (modById(id)||{nome:id}).nome;
   return [
     `NUOVA APP — configurazione`,
@@ -290,7 +320,9 @@ function buildText(){
     ...(c.logo?[`Logo: ${c.logo} (allega il file alla mail)`]:[]),
     `Moduli base: ${c.moduli_base.map(nm).join(', ')}`,
     `Moduli extra: ${c.moduli_extra.length?c.moduli_extra.map(nm).join(', '):'nessuno'}`,
-    ...(c.modulo_su_misura?[``,`MODULO SU MISURA (da costruire):`,c.modulo_su_misura]:[]),
+    ``,
+    `STIMA COSTO: CHF ${P.canone}/mese + CHF 690 attivazione${P.custom?' + modulo su misura da concordare (una tantum)':''}`,
+    ...(c.modulo_su_misura?[``,`MODULO SU MISURA (da costruire, da concordare prezzo):`,c.modulo_su_misura]:[]),
     ``,
     `--- config (per l'assemblaggio) ---`,
     JSON.stringify(c)
