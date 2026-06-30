@@ -6,7 +6,8 @@ const ALL_MODS = [...MODULI_BASE, ...MODULI_EXTRA];
 const modById = id => byId(ALL_MODS, id);
 
 const STEPS = ['Azienda','Settore','Moduli','Anteprima'];
-const S = { step:1, azienda:'', referente:'', email:'', telefono:'', dipendenti:'', logo:'', settore:null, extra:new Set(), richiesta:'', previewView:'hub', device:'phone', accent:'#FF453A' };
+const S = { step:1, azienda:'', referente:'', email:'', telefono:'', dipendenti:'', logo:'', settore:null, extra:new Set(), richiesta:'', dominio:false, migrazione:false, previewView:'hub', device:'phone', accent:'#FF453A' };
+function toggleServizio(key){ S[key]=!S[key]; if(S.step===4){ $('#view').innerHTML=step4(); } }
 
 /* ---------------- color picker (accento per-azienda) ---------------- */
 const COLORI = [
@@ -181,6 +182,7 @@ function step4(){
   const P = calcPrezzo();
   const extraPriceRows = extraChosen.filter(m=>m.stato!=='arrivo'&&!m.custom)
     .map(m=>`<div class="rowl"><span class="k">${esc(m.nome.toUpperCase())}</span><span>+ CHF ${tierPrezzo(m.id)} / mese</span></div>`).join('');
+  const svc=(key,label,sub)=>`<span onclick="toggleServizio('${key}')" style="cursor:pointer;display:inline-flex;align-items:center;gap:7px;font-size:13.5px;padding:9px 13px;border-radius:11px;border:1px solid ${S[key]?'#34D399':'rgba(255,255,255,.15)'};background:${S[key]?'rgba(52,211,153,.12)':'transparent'};color:${S[key]?'#EAF0EC':'var(--t2,#9aa)'}">${S[key]?'✓':'+'} ${label} <span style="opacity:.7;font-size:11.5px">· ${sub}</span></span>`;
   // assicura una schermata valida selezionata
   const validi = new Set([...chosenMods().map(m=>m.id),'altro']);
   if(!validi.has(S.previewView)) S.previewView='hub';
@@ -200,6 +202,15 @@ function step4(){
     ${S.richiesta.trim()?`<div class="rowl"><span class="k">SU MISURA</span><div class="chips"><span class="chip" style="white-space:normal;line-height:1.45;text-align:left">✨ ${esc(S.richiesta.trim())}</span></div></div>`:''}
 
     <div style="margin-top:18px;border-top:1px solid var(--line);padding-top:16px">
+      <h3>➕ Servizi aggiuntivi <span style="color:var(--t3);font-size:13px;font-weight:400">· facoltativi</span></h3>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:8px">
+        ${svc('dominio','🌐 Dominio personalizzato','CHF 90/anno')}
+        ${svc('migrazione','📦 Migrazione dati','da concordare')}
+      </div>
+      <div class="cs" style="margin-top:8px;color:var(--t3);font-size:12px">Il dominio è un indirizzo tuo (es. miazienda.ch). La migrazione porta dentro i dati dal tuo vecchio gestionale.</div>
+    </div>
+
+    <div style="margin-top:18px;border-top:1px solid var(--line);padding-top:16px">
       <h3>💳 Il tuo abbonamento</h3>
       <div class="rowl"><span class="k">CANONE BASE</span><span>CHF 59 / mese</span></div>
       ${extraPriceRows}
@@ -207,6 +218,8 @@ function step4(){
       ${P.sconto?`<div class="rowl"><span class="k">SCONTO VOLUME</span><span>− ${Math.round(P.sconto*100)}%</span></div>`:''}
       <div class="rowl" style="border-top:1px solid var(--line);margin-top:6px;padding-top:10px"><span class="k" style="color:var(--t1);font-weight:700">TOTALE MENSILE</span><span style="font-weight:700;font-size:18px;color:var(--t1)">CHF ${P.canone} / mese</span></div>
       <div class="rowl"><span class="k">ATTIVAZIONE</span><span>CHF 690 una tantum <span style="color:var(--t3);font-size:12px">· progettazione iniziale</span></span></div>
+      ${S.dominio?`<div class="rowl"><span class="k">DOMINIO</span><span>CHF 90 / anno</span></div>`:''}
+      ${S.migrazione?`<div class="rowl"><span class="k">MIGRAZIONE DATI</span><span style="text-align:right;color:var(--amber)">da concordare<br><span style="font-size:12px">in base ai dati · una tantum</span></span></div>`:''}
       ${P.custom?`<div class="rowl"><span class="k" style="color:var(--amber)">MODULO SU MISURA</span><span style="text-align:right;color:var(--amber)">da concordare insieme<br><span style="font-size:12px">ti contatto io · si paga una volta sola</span></span></div>`:''}
     </div>
 
@@ -297,6 +310,8 @@ function buildConfig(){
     telefono: S.telefono.trim(),
     dipendenti: S.dipendenti?Number(S.dipendenti):null,
     logo: S.logo||false,
+    dominio: !!S.dominio,
+    migrazione: !!S.migrazione,
     moduli_base: MODULI_BASE.map(m=>m.id),
     moduli_extra: [...S.extra],
     generato: 'configuratore'
@@ -321,7 +336,8 @@ function buildText(){
     `Moduli base: ${c.moduli_base.map(nm).join(', ')}`,
     `Moduli extra: ${c.moduli_extra.length?c.moduli_extra.map(nm).join(', '):'nessuno'}`,
     ``,
-    `STIMA COSTO: CHF ${P.canone}/mese + CHF 690 attivazione${P.custom?' + modulo su misura da concordare (una tantum)':''}`,
+    `STIMA COSTO: CHF ${P.canone}/mese + CHF 690 attivazione${S.dominio?' + CHF 90/anno dominio':''}${S.migrazione?' + migrazione dati (da concordare)':''}${P.custom?' + modulo su misura da concordare (una tantum)':''}`,
+    ...((S.dominio||S.migrazione)?[`Servizi extra richiesti: ${[S.dominio?'dominio personalizzato (CHF 90/anno)':null,S.migrazione?'migrazione dati (da concordare)':null].filter(Boolean).join(', ')}`]:[]),
     ...(c.modulo_su_misura?[``,`MODULO SU MISURA (da costruire, da concordare prezzo):`,c.modulo_su_misura]:[]),
     ``,
     `--- config (per l'assemblaggio) ---`,
