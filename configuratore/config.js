@@ -160,7 +160,7 @@ function updCount(){ const c=$('.count'); if(c) c.textContent=`${MODULI_BASE.len
 function chosenMods(){ return [...MODULI_BASE, ...MODULI_EXTRA.filter(m=>S.extra.has(m.id))]; }
 
 /* ---- prezzo (stesso listino della landing) ---- */
-const MOD_TIER={conti:15, man:25, macchine:25, pellet:25, sites:39, zone:39};
+const MOD_TIER={conti:12, man:19, macchine:19, pellet:19, sites:29, zone:29};
 const tierPrezzo=id=>MOD_TIER[id]||25;
 function calcPrezzo(){
   const extra=[...S.extra].filter(id=>{const m=modById(id);return m && m.stato!=='arrivo' && !m.custom;});
