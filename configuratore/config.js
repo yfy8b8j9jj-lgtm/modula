@@ -114,7 +114,7 @@ function pickSettore(id){
 /* ---------------- STEP 3 — moduli ---------------- */
 function step3(){
   const st = byId(SETTORI, S.settore) || {proposti:[]};
-  const pronti   = MODULI_EXTRA.filter(m=>m.stato!=='arrivo');
+  const pronti   = MODULI_EXTRA.filter(m=>m.stato!=='arrivo' && !m.custom);  /* niente moduli su misura di altri */
   const proposti = pronti.filter(m=>st.proposti.includes(m.id));
   const altri    = pronti.filter(m=>!st.proposti.includes(m.id));
   const tile = (m,extra=true)=>`

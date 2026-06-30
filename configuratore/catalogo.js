@@ -22,7 +22,7 @@ const MODULI_EXTRA = [
   { id:'conti',    ic:'💰',  nome:'Conti',                desc:'Entrate, spese e utile sotto controllo.',  stato:'pronto' },
   { id:'man',      ic:'🔧',  nome:'Manutenzioni',         desc:'Interventi, assistenza e storico.',        stato:'pronto' },
   { id:'sites',    ic:'🏗',  nome:'Cantieri / Commesse',  desc:'Lavori in corso, ore e avanzamento.',      stato:'pronto' },
-  { id:'macchine', ic:'⚙️',  nome:'Macchine / Impianti',  desc:'Parco macchine, schede e assistenza.',     stato:'pronto' },
+  { id:'macchine', ic:'⚙️',  nome:'Macchine / Impianti',  desc:'Parco macchine, schede e assistenza.',     stato:'pronto', custom:'ptek' },  /* su misura per ptek: NON proposto agli altri */
   { id:'pellet',   ic:'🪵',  nome:'Consegne prodotto',    desc:'Consegne, bolle e scorte.',                stato:'pronto' },
   { id:'zone',     ic:'🗺️',  nome:'Zone & Mappa',         desc:'Zone di consegna e clienti sulla mappa.',  stato:'pronto' },
   /* in arrivo (visibili nel catalogo, si costruiscono man mano) */
@@ -41,7 +41,7 @@ const MODULI_EXTRA = [
 const SETTORI = [
   { id:'impianti', ic:'🔥', nome:'Impianti & Energia',
     desc:'Caldaie, riscaldamento, fotovoltaico, assistenza tecnica.',
-    proposti:['man','macchine','sites','pellet','zone','conti'] },
+    proposti:['man','sites','pellet','zone','conti'] },
 
   { id:'edilizia', ic:'🧱', nome:'Edilizia & Cantieri',
     desc:'Imprese edili, ristrutturazioni, artigiani del costruire.',

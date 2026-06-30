@@ -83,6 +83,8 @@
   .abbo-table th{text-align:left;color:var(--t3);font-size:12px;font-weight:600;padding:8px 10px;border-bottom:1px solid var(--line)}
   .abbo-table td{padding:10px;border-bottom:1px solid var(--line)}
   .abbo-table select{width:auto;padding:5px 8px;font-size:13px}
+  .mod-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
+  .mod-row:last-child{border-bottom:none}
   .paste-box{background:var(--bg);border:1px dashed var(--ac);border-radius:10px;padding:12px 14px;margin-bottom:14px}
   .paste-box textarea{width:100%;min-height:64px;background:var(--bg2);border:1px solid var(--line2);border-radius:8px;color:var(--t1);font-family:'JetBrains Mono';font-size:12.5px;padding:9px 11px;resize:vertical}
   .center{min-height:72vh;display:flex;flex-direction:column;align-items:center;justify-content:center}
@@ -112,7 +114,18 @@ const MODULES=[
   {id:'cal',label:'Calendario'},{id:'notes',label:'Note'},
   {id:'clients',label:'Clienti'},{id:'emps',label:'Personale'},
   {id:'man',label:'Manutenzioni'},{id:'pellet',label:'Pellet'},{id:'sites',label:'Cantieri'},
-  {id:'macchine',label:'Macchine'},{id:'zone',label:'Zone'},{id:'conti',label:'Conti'},
+  {id:'macchine',label:'Macchine',custom:'ptek'},{id:'zone',label:'Zone'},{id:'conti',label:'Conti'},
+];
+const BASE_IDS=new Set(['hub','notif','cal','notes','clients','emps']);
+/* Moduli ancora da costruire — ci pensiamo poi (coda di lavoro) */
+const MODULES_TODO=[
+  {ic:'🗓️',label:'Prenotazioni',note:'appuntamenti / prenotazioni online'},
+  {ic:'📦',label:'Magazzino',note:'scorte, carico/scarico, soglie'},
+  {ic:'🏷️',label:'Catalogo / Listino',note:'prodotti, prezzi, disponibilità'},
+  {ic:'📁',label:'Documenti',note:'archivio file, contratti, schede'},
+  {ic:'📊',label:'Report & Statistiche',note:'andamento attività in numeri'},
+  {ic:'🎁',label:'Fidelity & Promo',note:'punti, tessere, promozioni'},
+  {ic:'⏱️',label:'Turni & Presenze',note:'turni e timbrature'},
 ];
 const mLabel=id=>{const m=MODULES.find(x=>x.id===id);return m?m.label:id;};
 const BASE=location.origin+location.pathname.replace(/\/admin(\/.*)?$/,'/');
@@ -182,6 +195,7 @@ let DATA=null, TAB='aziende';
 const TABS=[
   {id:'aziende',  label:'\u{1F3E2} Aziende clienti'},
   {id:'banco',    label:'\u{1F9EA} Banco di prova'},
+  {id:'moduli',   label:'\u{1F9F1} Moduli'},
   {id:'abbonamenti',label:'\u{1F4B3} Abbonamenti'},
   {id:'link',     label:'\u{1F517} Link'}
 ];
@@ -207,6 +221,7 @@ function renderTab(){
   const c=$('#content');
   if(TAB==='aziende') c.innerHTML=sectionAziende();
   else if(TAB==='banco') c.innerHTML=sectionBanco();
+  else if(TAB==='moduli') c.innerHTML=sectionModuli();
   else if(TAB==='abbonamenti') c.innerHTML=sectionAbbonamenti();
   else c.innerHTML=sectionLink();
 }
@@ -327,6 +342,31 @@ async function savePayStatus(id,val){
   renderTab();
 }
 
+/* ---- sezione MODULI ---- */
+function sectionModuli(){
+  const cli=DATA.tenants.filter(t=>!isBench(t));
+  const usage=id=>cli.filter(t=>(t.modules||[]).includes(id)).length;
+  const row=m=>{
+    const n=usage(m.id);
+    const tag=m.custom
+      ? `<span class="pill" style="border-color:#A855F7;color:#C084FC">su misura · ${esc(m.custom)}</span>`
+      : `<span class="pill">${BASE_IDS.has(m.id)?'base':'standard'}</span>`;
+    return `<div class="mod-row"><div><b>${esc(m.label)}</b> ${tag}</div><div class="tiny">attivo in ${n} ${n===1?'azienda':'aziende'}</div></div>`;
+  };
+  const standard=MODULES.filter(m=>!m.custom);
+  const custom=MODULES.filter(m=>m.custom);
+  const todo=MODULES_TODO.map(t=>`<div class="mod-row"><div><b>${esc(t.ic||'')} ${esc(t.label)}</b> <span class="pill" style="border-color:var(--amber);color:var(--amber)">da fare</span></div><div class="tiny">${esc(t.note||'')}</div></div>`).join('');
+  return `
+    <h2>Moduli</h2>
+    <div class="tiny" style="margin:4px 0 16px">Tutti i moduli della piattaforma. Quelli ✦ <b>su misura</b> valgono solo per l'azienda indicata e non si propongono agli altri.</div>
+    <div class="sec">Standard — disponibili per tutti</div>
+    <div class="card" style="padding:6px 16px">${standard.map(row).join('')}</div>
+    <div class="sec">Su misura — esclusivi di un'azienda</div>
+    <div class="card" style="padding:6px 16px">${custom.length?custom.map(row).join(''):'<div class="tiny" style="padding:8px 0">Nessuno.</div>'}</div>
+    <div class="sec">Da fare — ci pensiamo poi</div>
+    <div class="card" style="padding:6px 16px">${todo||'<div class="tiny" style="padding:8px 0">Lista vuota.</div>'}</div>`;
+}
+
 /* ---- sezione LINK ---- */
 function sectionLink(){
   const base=BASE;
@@ -350,9 +390,11 @@ function fmtDate(d){if(!d)return '—';try{return new Date(d).toLocaleDateString
 function tenantCard(t,codes,adm,ov){
   codes=codes||[];adm=adm||{};ov=ov||{};
   const mods=Array.isArray(t.modules)?t.modules:[];
-  const chipFor=m=>`<span class="chip ${mods.includes(m.id)?'on':''} ${m.lock?'lock':''}" data-t="${t.id}" data-m="${m.id}" ${m.lock?'':`onclick="toggleMod(this)"`}>${esc(m.label)}</span>`;
-  const active=MODULES.filter(m=>mods.includes(m.id));
-  const inactive=MODULES.filter(m=>!mods.includes(m.id));
+  const chipFor=m=>`<span class="chip ${mods.includes(m.id)?'on':''} ${m.lock?'lock':''}" data-t="${t.id}" data-m="${m.id}" ${m.lock?'':`onclick="toggleMod(this)"`}>${esc(m.label)}${m.custom?' ✦':''}</span>`;
+  // i moduli su misura si mostrano solo all'azienda proprietaria (o se gia' attivi)
+  const visibleMods=MODULES.filter(m=>!m.custom||m.custom===t.slug||mods.includes(m.id));
+  const active=visibleMods.filter(m=>mods.includes(m.id));
+  const inactive=visibleMods.filter(m=>!mods.includes(m.id));
   const chipsActive=active.map(chipFor).join('');
   const chipsInactive=inactive.map(chipFor).join('');
   const codeRows = codes.length
@@ -485,7 +527,7 @@ async function savePosti(id){
 }
 
 function newTenantForm(){
-  const chips=MODULES.map(m=>`<span class="chip ${m.lock||['cal','notes','clients'].includes(m.id)?'on':''} ${m.lock?'lock':''}" data-m="${m.id}" ${m.lock?'':`onclick="toggleMod(this)"`}>${esc(m.label)}</span>`).join('');
+  const chips=MODULES.filter(m=>!m.custom).map(m=>`<span class="chip ${m.lock||['cal','notes','clients'].includes(m.id)?'on':''} ${m.lock?'lock':''}" data-m="${m.id}" ${m.lock?'':`onclick="toggleMod(this)"`}>${esc(m.label)}</span>`).join('');
   return `<div class="card">
     <div class="paste-box">
       <label style="color:var(--ac)">📥 Incolla la configurazione del cliente</label>
