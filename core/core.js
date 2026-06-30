@@ -35,7 +35,7 @@ const seatFull=()=>MAX_EMP!=null && seatCount()>=MAX_EMP;
 /* viste visibili = permesso utente (can) ∩ modulo attivo per il tenant */
 function visViews(){return VIEWS.filter(v=>v.id==='hub'||v.id==='notif'||((v.id==='zone'?can('clients'):can(v.id))&&moduleActive(v.id)));}
 
-const APP_VERSION='2026.06.30-105817';
+const APP_VERSION='2026.06.30-112459';
 
 const blank=()=>({clients:[],employees:[],notes:[],noteGroups:[],appointments:[],maintenances:[],pellet:[],sites:[],chat:[],lists:[],callLog:[],expenses:[],maintPrices:[],settings:{bagsPerPallet:70,companyName:'',pricePerTon:null,pricePerBag:null},speaker:null,session:null});
 let S=blank();
@@ -522,6 +522,7 @@ function renderNav(){
     +(isOwner()?`<div class="ni" onclick="openBackup()"><span class="ic">💾</span>Backup dati</div>`:'')
     +(isOwner()?`<div class="ni" onclick="openImport()"><span class="ic">📥</span>Importa dati</div>`:'')
     +`<div class="ni" onclick="toggleTheme()"><span class="ic">${getTheme()==='dark'?'☀️':'🌙'}</span>${getTheme()==='dark'?'Tema chiaro':'Tema scuro'}</div>`
+    +`<div class="ni" onclick="openChangePassword()"><span class="ic">🔑</span>Cambia password</div>`
     +`<div class="ni" onclick="logout()"><span class="ic">🚪</span>Esci (${esc(me().name)})</div>`;
   const allowed=new Set(vis.map(v=>v.id));
   let chosen=getBottomNav().filter(id=>allowed.has(id)).slice(0,5);
@@ -553,8 +554,29 @@ function openMenu(){
     ${isOwner()?`<div class="sg" style="padding:13px;border-color:var(--line2)" onclick="closeSheet();openBackup()">💾 Backup dati</div>`:''}
     ${isOwner()?`<div class="sg" style="padding:13px;border-color:var(--line2)" onclick="closeSheet();openImport()">📥 Importa dati</div>`:''}
     <div class="sg" style="padding:13px" onclick="closeSheet();toggleTheme()">${getTheme()==='dark'?'☀️ Tema chiaro':'🌙 Tema scuro'}</div>
+    <div class="sg" style="padding:13px" onclick="closeSheet();openChangePassword()">🔑 Cambia password</div>
     <div class="sg" style="padding:13px;border-color:rgba(214,69,40,.35);color:var(--coral)" onclick="logout()">🚪 Esci (${esc(me().name)})</div>
   </div>`);
+}
+function openChangePassword(){
+  if(DEMO){toast('Demo: in un\'app reale qui cambi la password');return;}
+  openSheet(`<h3>Cambia password <span class="x" onclick="closeSheet()">✕</span></h3>
+    <div class="subtle" style="margin-bottom:10px">Imposta una nuova password per il tuo accesso (almeno 6 caratteri).</div>
+    <input id="cp-pw" class="txt" type="password" placeholder="Nuova password" autocomplete="new-password">
+    <div style="height:8px"></div>
+    <input id="cp-pw2" class="txt" type="password" placeholder="Ripeti la password" autocomplete="new-password" onkeydown="if(event.key==='Enter')doChangePassword()">
+    <div id="cp-err" style="color:var(--coral);font-size:13px;min-height:18px;margin:6px 0"></div>
+    <button class="btn pri" style="width:100%" onclick="doChangePassword()">Salva nuova password</button>`);
+  setTimeout(()=>{const f=document.getElementById('cp-pw');if(f)f.focus();},60);
+}
+async function doChangePassword(){
+  const pw=document.getElementById('cp-pw').value, pw2=document.getElementById('cp-pw2').value;
+  const er=document.getElementById('cp-err'); er.textContent='';
+  if(pw.length<6){er.textContent='Almeno 6 caratteri';return;}
+  if(pw!==pw2){er.textContent='Le due password non coincidono';return;}
+  const{error}=await sb.auth.updateUser({password:pw});
+  if(error){er.textContent=error.message;return;}
+  closeSheet();toast('✓ Password aggiornata');
 }
 /* personalizzazione barra in basso */
 function editBottomNav(){
