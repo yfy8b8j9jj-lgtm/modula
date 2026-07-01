@@ -440,7 +440,9 @@ function csvMonthAll(ym){
   const rows=[head];
   S.employees.forEach(e=>{const list=tsMonth(e.id,ym),s=tsSum(list),ot=overtime(e.id,list);
     rows.push([e.name,e.role||'',fmtQty(s.hours),ot!=null?fmtQty(ot):'',s.ferie||0,s.malattia||0,s.permesso||0,s.assenza||0]);});
-  const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(';')).join('\r\n');
+  /* anti CSV-injection: neutralizza celle che iniziano con =,+,-,@ (ma non i numeri) */
+  const cell=v=>{let s=String(v);if(/^[=+\-@\t\r]/.test(s)&&!/^-?[\d.,]+$/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"';};
+  const csv=rows.map(r=>r.map(cell).join(';')).join('\r\n');
   const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='presenze-'+ym+'.csv';document.body.appendChild(a);a.click();a.remove();
   toast('⬇️ CSV scaricato');
@@ -560,8 +562,15 @@ function editEmp(id){
   </div>`:''}
   ${tasks.length?`<div class="fld"><label>Incarichi aperti (${tasks.length})</label>${tasks.map(t=>`<div class="subtle" style="padding:3px 0">• ${esc(t)}</div>`).join('')}</div>`:''}
   <div class="actions">
-    ${id&&!isMe&&isOwner()?`<button class="btn danger" onclick="delItem('employees','${id}')">Elimina</button>`:''}
+    ${id&&!isMe&&isOwner()?`<button class="btn danger" onclick="delEmp('${id}')">Elimina</button>`:''}
     <button class="btn pri" onclick="saveEmp('${id||''}')">Salva</button></div>`);
+}
+/* elimina una persona E i suoi cartellini (GDPR: niente dati orfani, evita errori FK in sync) */
+function delEmp(id){
+  if(!confirm('Eliminare definitivamente questa persona e tutti i suoi cartellini?'))return;
+  S.timeEntries=S.timeEntries.filter(t=>t.empId!==id);
+  S.employees=S.employees.filter(e=>e.id!==id);
+  save();closeSheet();render();toast('Eliminato');
 }
 function saveEmp(id){
   const name=$('#em-n').value.trim();if(!name){toast('Manca il nome');return;}
