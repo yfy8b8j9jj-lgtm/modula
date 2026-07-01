@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# ============================================================================
+# pubblica.sh — MODULA: porta il lavoro corrente ONLINE.
+# ----------------------------------------------------------------------------
+# Il sito live (landing, configuratore, portale e SOPRATTUTTO l'app-root
+# app.html che usano ptek e i clienti come PWA) è servito da GitHub Pages dal
+# branch `main`. Si lavora però su `multitenant`: senza questo passaggio le
+# modifiche NON vanno mai live. Questo script fa tutto in un colpo:
+#   1. verifica che sia tutto committato
+#   2. avanza `main` al branch corrente (fast-forward) e lo pusha
+#   3. attende che GitHub Pages ribuildi il commit giusto
+#   4. conferma l'URL live
+#
+# Uso:  ./pubblica.sh
+# ============================================================================
+set -euo pipefail
+REPO="yfy8b8j9jj-lgtm/modula"
+LIVE_BRANCH="main"
+cd "$(dirname "$0")"
+
+cur=$(git branch --show-current)
+echo "▶ Pubblico il branch «$cur» su «$LIVE_BRANCH» (sito live)"
+
+# 1. niente modifiche in sospeso
+if [ -n "$(git status --porcelain)" ]; then
+  echo "✋ Ci sono modifiche non committate. Committa prima (o «aggiorna e chiudi»), poi ripubblica:"
+  git status --short
+  exit 1
+fi
+
+# 2. avanza main al branch corrente e pusha
+if [ "$cur" = "$LIVE_BRANCH" ]; then
+  git push origin "$LIVE_BRANCH"
+elif git merge-base --is-ancestor "$LIVE_BRANCH" "$cur"; then
+  git branch -f "$LIVE_BRANCH" "$cur"
+  git push origin "$cur:$LIVE_BRANCH"
+  echo "✓ «$LIVE_BRANCH» avanzato a $(git rev-parse --short "$cur")"
+else
+  echo "✋ «$LIVE_BRANCH» è divergente da «$cur» (non è un fast-forward): serve un merge manuale."
+  exit 1
+fi
+
+head=$(git rev-parse HEAD)
+owner=${REPO%%/*}; name=${REPO##*/}
+url="https://${owner}.github.io/${name}/"
+echo "⏳ Attendo la build di GitHub Pages per $(git rev-parse --short HEAD)…"
+
+# 3. poll finché Pages ha buildato ESATTAMENTE questo commit
+for i in $(seq 1 40); do
+  read -r status commit < <(gh api "repos/$REPO/pages/builds/latest" 2>/dev/null \
+    | python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('status'),d.get('commit'))" 2>/dev/null \
+    || echo "unknown none")
+  if [ "$status" = "built" ] && [ "$commit" = "$head" ]; then
+    echo "✅ PUBBLICATO — live: ${url}"
+    echo "   L'app ptek/clienti (PWA su app.html) prende i file nuovi alla prossima apertura o pull-to-refresh."
+    echo "   ⚠ Se hai cambiato il MODELLO DATI (nuove tabelle/colonne), ricordati: Supabase → SQL Editor → esegui supabase/schema.sql."
+    exit 0
+  fi
+  echo "   …build: ${status} (tentativo ${i}/40)"
+  sleep 10
+done
+echo "⚠ Build non confermata entro il timeout — controlla su GitHub. Il push su «$LIVE_BRANCH» è comunque avvenuto."
+exit 0
