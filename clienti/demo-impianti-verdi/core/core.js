@@ -2,27 +2,42 @@
 /* Estratto da ptek. I moduli (base + extra) sono file separati caricati DOPO questo. */
 
 /* ================= STATE + SUPABASE ================= */
-/* ─── BACKEND: ogni azienda inserisce il PROPRIO progetto Supabase ───
-   Questo è un TEMPLATE strutturale: NON è collegato a nessun dato reale.
-   Sostituire i due segnaposto con le credenziali del proprio progetto. */
-const SB_URL='__SUPABASE_URL__';        /* es. https://xxxx.supabase.co */
-const SB_KEY='__SUPABASE_ANON_KEY__';   /* chiave pubblica (anon/publishable) */
+/* ─── BACKEND MULTI-TENANT: UN solo progetto Supabase per TUTTA la piattaforma ───
+   Le credenziali stanno in core/config.js (window.MODULA_CONFIG), condivise da
+   tutte le aziende. L'isolamento dei dati lo fa la RLS lato server (vedi
+   supabase/schema.sql): ogni azienda (tenant) vede solo le sue righe. */
+const CFG=(window.MODULA_CONFIG||{});
+const SB_URL=CFG.SUPABASE_URL||'__SUPABASE_URL__';
+const SB_KEY=CFG.SUPABASE_ANON_KEY||'__SUPABASE_ANON_KEY__';
 /* VETRINA/DEMO: finché le credenziali sono segnaposto (o assenti) l'app parte in
    modalità demo — dati di esempio, nessun backend — così è subito navigabile.
    Appena si inseriscono URL+chiave reali, riparte normale (login + Supabase). */
-const DEMO=(/^__/.test(SB_URL))||!SB_URL;
+/* DEMO anche su richiesta esplicita: app.html?demo=1 → vetrina della STESSA app
+   (dati di esempio, nessun backend), usata dal bottone "Demo dal vivo" della landing. */
+const DEMO=(/^__/.test(SB_URL))||!SB_URL||/[?&]demo=1\b/.test(location.search);
 const sb=DEMO?null:window.supabase.createClient(SB_URL,SB_KEY);
 
-/* ─── BRAND: ogni azienda mette QUI il SUO nome e logo (template neutro, nessun marchio) ─── */
-const BRAND={
-  name:'Demo Impianti Verdi',  /* nome azienda (login + barra in alto) */
-  tagline:'Impianti',          /* sottotitolo opzionale, es. il settore */
-  logo:''                      /* percorso del logo, es. './logo.png'. Vuoto = mostra solo il nome */
-};
+/* ─── BRAND: NON più fisso. Viene caricato dal tenant dell'azienda dopo il login
+   (nome, logo, accento). Vuoto finché non si è loggati. ─── */
+let BRAND={ name:'', tagline:'', logo:'' };
+/* Moduli attivi per l'azienda loggata. null = tutti (demo/retrocompat); altrimenti
+   è l'elenco deciso dal super-admin per quel tenant. Filtra cosa si vede in nav. */
+let ACTIVE_MODULES=null;
+const moduleActive=id=>!ACTIVE_MODULES||id==='hub'||id==='notif'||ACTIVE_MODULES.includes(id);
+/* Posti dipendente del piano (titolare incluso). null = illimitato (demo/retrocompat).
+   Lo decide il super-admin per ogni azienda; l'app impedisce di superarlo. */
+let MAX_EMP=null;
+/* id dell'azienda loggata: prefisso delle cartelle Storage (isolamento file per tenant). */
+let TENANT_ID=null;
+let TENANT_ACTIVE=true;  /* false = azienda sospesa (es. non paga): l'app blocca l'accesso */
+const seatCount=()=>S.employees.filter(e=>e.active!==false).length;
+const seatFull=()=>MAX_EMP!=null && seatCount()>=MAX_EMP;
+/* viste visibili = permesso utente (can) ∩ modulo attivo per il tenant */
+function visViews(){return VIEWS.filter(v=>v.id==='hub'||v.id==='notif'||((v.id==='zone'?can('clients'):can(v.id))&&moduleActive(v.id)));}
 
-const APP_VERSION='2026.06.19-135159';
+const APP_VERSION='2026.06.30-113212';
 
-const blank=()=>({clients:[],employees:[],notes:[],noteGroups:[],appointments:[],maintenances:[],pellet:[],sites:[],chat:[],lists:[],callLog:[],expenses:[],maintPrices:[],settings:{bagsPerPallet:70,companyName:'',pricePerTon:null,pricePerBag:null},speaker:null,session:null});
+const blank=()=>({clients:[],employees:[],timeEntries:[],notes:[],noteGroups:[],appointments:[],maintenances:[],pellet:[],sites:[],chat:[],lists:[],callLog:[],expenses:[],maintPrices:[],settings:{bagsPerPallet:70,companyName:'',pricePerTon:null,pricePerBag:null},speaker:null,session:null});
 let S=blank();
 const uid=()=>(crypto.randomUUID?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==='x'?r:(r&3|8)).toString(16);}));
 
@@ -33,8 +48,11 @@ const MAPS={
   toDb:c=>({id:c.id,name:c.name,phone:c.phone||'',zone:c.zone||'',group:c.group||'',address:c.address||'',plant:c.plant||'',pellet:c.pellet||'',maintenance:c.maintenance||'',notes:c.notes||'',blocked:!!c.blocked,first_name:c.firstName||'',last_name:c.lastName||'',street:c.street||'',street_no:c.streetNo||'',cap:c.cap||'',town:c.town||'',email:c.email||'',lat:(typeof c.lat==='number'?c.lat:null),lng:(typeof c.lng==='number'?c.lng:null),geo_src:c.geoSrc||null}),
   fromDb:r=>({id:r.id,name:r.name,phone:r.phone||'',zone:r.zone||'',group:r.group||'',address:r.address||'',plant:r.plant||'',pellet:r.pellet||'',maintenance:r.maintenance||'',notes:r.notes||'',blocked:!!r.blocked,firstName:r.first_name||'',lastName:r.last_name||'',street:r.street||'',streetNo:r.street_no||'',cap:r.cap||'',town:r.town||'',email:r.email||'',lat:(typeof r.lat==='number'?r.lat:null),lng:(typeof r.lng==='number'?r.lng:null),geoSrc:r.geo_src||null,created:Date.parse(r.created_at)||Date.now()})},
  employees:{tbl:'employees',
-  toDb:e=>({id:e.id,name:e.name,role:e.role||'',phone:e.phone||'',perms:e.perms||[],is_owner:!!e.isOwner,active:e.active!==false,invite_code:e.inviteCode||null,user_id:e.userId||null}),
-  fromDb:r=>({id:r.id,name:r.name,role:r.role||'',phone:r.phone||'',perms:r.perms||[],isOwner:!!r.is_owner,active:r.active!==false,inviteCode:r.invite_code,userId:r.user_id})},
+  toDb:e=>({id:e.id,name:e.name,role:e.role||'',phone:e.phone||'',perms:e.perms||[],is_owner:!!e.isOwner,active:e.active!==false,invite_code:e.inviteCode||null,user_id:e.userId||null,day_hours:num(e.dayHours),holiday_days:num(e.holidayDays)}),
+  fromDb:r=>({id:r.id,name:r.name,role:r.role||'',phone:r.phone||'',perms:r.perms||[],isOwner:!!r.is_owner,active:r.active!==false,inviteCode:r.invite_code,userId:r.user_id,dayHours:r.day_hours,holidayDays:r.holiday_days})},
+ timeEntries:{tbl:'time_entries',
+  toDb:t=>({id:t.id,emp_id:t.empId||null,date:t.date||null,type:t.type||'lavoro',hours:num(t.hours),start_t:t.start||null,end_t:t.end||null,break_min:num(t.brk),note:t.note||''}),
+  fromDb:r=>({id:r.id,empId:r.emp_id,date:r.date,type:r.type||'lavoro',hours:r.hours,start:r.start_t||'',end:r.end_t||'',brk:r.break_min,note:r.note||'',created:Date.parse(r.created_at)||Date.now()})},
  maintenances:{tbl:'maintenances',
   toDb:m=>({id:m.id,title:m.title,client_id:m.clientId||null,client_raw:m.clientRaw||null,employee_id:(m.employees&&m.employees[0])||m.employeeId||null,employees:m.employees||(m.employeeId?[m.employeeId]:[]),date:m.date||null,time:m.time||null,status:m.status||'da_fare',notes:m.notes||'',recur:m.recur||0,price:num(m.price),type:m.type||null,report:m.report||null,via:m.via||'manuale'}),
   fromDb:r=>({id:r.id,title:r.title,clientId:r.client_id,clientRaw:r.client_raw,employeeId:r.employee_id,employees:(r.employees&&r.employees.length)?r.employees:(r.employee_id?[r.employee_id]:[]),date:r.date,time:r.time,status:r.status,notes:r.notes||'',recur:r.recur||0,price:r.price,type:r.type||'',report:r.report,via:r.via,created:Date.parse(r.created_at)||Date.now()})},
@@ -75,17 +93,18 @@ let snapshot={};
 function snapRows(key,rows){const o={};rows.forEach(r=>o[r.id]=JSON.stringify(r));snapshot[key]=o;}
 async function loadAll(){
   const q=t=>sb.from(t).select('*');
-  const[cl,em,ma,ap,pe,si,sl,at,no,ng,li,it,ch,cg,ex,mp,st]=await Promise.all([
-    q('clients'),q('employees'),q('maintenances'),q('appointments'),q('pellet'),
+  const[cl,em,te,ma,ap,pe,si,sl,at,no,ng,li,it,ch,cg,ex,mp,st]=await Promise.all([
+    q('clients'),q('employees'),q('time_entries'),q('maintenances'),q('appointments'),q('pellet'),
     q('sites'),q('site_logs').order('created_at'),q('attachments'),
     q('notes'),q('note_groups'),q('lists'),q('list_items').order('position'),
     sb.from('chat').select('*').order('created_at',{ascending:true}).limit(300),
     q('call_log'),q('expenses'),q('maint_prices'),sb.from('settings').select('*').eq('id',1).maybeSingle()
   ]);
-  const err=[cl,em,ma,ap,pe,si,sl,at,no,ng,li,it,ch,cg].find(x=>x.error);
+  const err=[cl,em,te,ma,ap,pe,si,sl,at,no,ng,li,it,ch,cg].find(x=>x.error);
   if(err)throw err.error;
   S.clients=(cl.data||[]).map(MAPS.clients.fromDb);
   S.employees=(em.data||[]).map(MAPS.employees.fromDb);
+  S.timeEntries=(te.data||[]).map(MAPS.timeEntries.fromDb);
   S.maintenances=(ma.data||[]).map(MAPS.maintenances.fromDb).sort((a,b)=>b.created-a.created);
   S.appointments=(ap.data||[]).map(MAPS.appointments.fromDb).sort((a,b)=>b.created-a.created);
   S.pellet=(pe.data||[]).map(MAPS.pellet.fromDb).sort((a,b)=>b.created-a.created);
@@ -106,6 +125,7 @@ async function loadAll(){
 function dbRows(){
   return{
     employees:S.employees.map(MAPS.employees.toDb),
+    timeEntries:S.timeEntries.map(MAPS.timeEntries.toDb),
     clients:S.clients.map(MAPS.clients.toDb),
     noteGroups:S.noteGroups.map(MAPS.noteGroups.toDb),
     lists:S.lists.map(MAPS.lists.toDb),
@@ -121,9 +141,9 @@ function dbRows(){
     maintPrices:S.maintPrices.map(MAPS.maintPrices.toDb),
   };
 }
-const TBL={employees:'employees',clients:'clients',noteGroups:'note_groups',lists:'lists',maintenances:'maintenances',appointments:'appointments',pellet:'pellet',sites:'sites',notes:'notes',listItems:'list_items',siteLogs:'site_logs',callLog:'call_log',expenses:'expenses',maintPrices:'maint_prices'};
-const UP_ORDER=['employees','clients','noteGroups','lists','maintenances','appointments','pellet','sites','expenses','notes','listItems','siteLogs','callLog','maintPrices'];
-const DEL_ORDER=['maintPrices','callLog','siteLogs','listItems','notes','expenses','sites','pellet','appointments','maintenances','lists','noteGroups','clients','employees'];
+const TBL={employees:'employees',timeEntries:'time_entries',clients:'clients',noteGroups:'note_groups',lists:'lists',maintenances:'maintenances',appointments:'appointments',pellet:'pellet',sites:'sites',notes:'notes',listItems:'list_items',siteLogs:'site_logs',callLog:'call_log',expenses:'expenses',maintPrices:'maint_prices'};
+const UP_ORDER=['employees','timeEntries','clients','noteGroups','lists','maintenances','appointments','pellet','sites','expenses','notes','listItems','siteLogs','callLog','maintPrices'];
+const DEL_ORDER=['maintPrices','callLog','siteLogs','listItems','notes','expenses','sites','pellet','appointments','maintenances','lists','noteGroups','clients','timeEntries','employees'];
 function rebuildSnapshot(){const r=dbRows();for(const k of UP_ORDER)snapRows(k,r[k]);snapshot._settings=JSON.stringify(S.settings);}
 
 /* ---------- sync: diff e push ---------- */
@@ -170,7 +190,7 @@ function startRealtime(){
   }).subscribe();
 }
 /* ---------- notifiche push (Web Push) ---------- */
-const VAPID_PUBLIC='__VAPID_PUBLIC_KEY__'; /* chiave pubblica push notifiche — per-azienda */
+const VAPID_PUBLIC=CFG.VAPID_PUBLIC||'__VAPID_PUBLIC_KEY__'; /* chiave pubblica push (una per la piattaforma) */
 let swReg=null,pushSubbed=false;
 const pushSupported=()=>('serviceWorker'in navigator)&&('PushManager'in window)&&('Notification'in window);
 async function initPush(){if(!pushSupported())return;try{swReg=await navigator.serviceWorker.register('./sw.js');const s=await swReg.pushManager.getSubscription();pushSubbed=!!s;}catch(e){}}
@@ -433,12 +453,48 @@ const VIEWS=[
   {id:'notes',ic:'📝',label:'Note'},
   {id:'notif',ic:'🔔',label:'Notifiche'},
   {id:'man',ic:'🔧',label:'Manut.'},
+  {id:'pellet',ic:'🪵',label:'Pellet'},
+  {id:'sites',ic:'🏗',label:'Cantieri'},
+  {id:'macchine',ic:'⚙️',label:'Macchine'},
   {id:'clients',ic:'👥',label:'Clienti'},
   {id:'zone',ic:'🗺️',label:'Zone'},
   {id:'conti',ic:'💰',label:'Conti'},
   {id:'emps',ic:'👷',label:'Personale'},
 ];
 let view='hub';
+/* ---- CATALOGO PIATTAFORMA: tutti i moduli Modula (per la schermata "Moduli & richieste") ----
+   base = sempre presenti · pronti = attivabili subito dal super-admin · arrivo = su misura/da costruire.
+   Tenere allineato con configuratore/catalogo.js e admin/index.html. */
+const MODULE_CATALOG={
+  base:[
+    {id:'hub',ic:'⚡',nome:'Hub',desc:'La schermata iniziale.'},
+    {id:'cal',ic:'📅',nome:'Calendario',desc:'Appuntamenti e scadenze.'},
+    {id:'notes',ic:'📝',nome:'Note',desc:'Appunti e liste condivise.'},
+    {id:'clients',ic:'👥',nome:'Clienti',desc:'Anagrafica clienti.'},
+    {id:'emps',ic:'👷',nome:'Personale',desc:'Il tuo team e i permessi.'},
+  ],
+  pronti:[
+    {id:'conti',ic:'💰',nome:'Conti',desc:'Entrate, spese e utile.'},
+    {id:'man',ic:'🔧',nome:'Manutenzioni',desc:'Interventi e storico.'},
+    {id:'sites',ic:'🏗',nome:'Cantieri',desc:'Lavori in corso e ore.'},
+    {id:'macchine',ic:'⚙️',nome:'Macchine',desc:'Parco macchine e schede.'},
+    {id:'pellet',ic:'🪵',nome:'Consegne',desc:'Consegne, bolle e scorte.'},
+    {id:'zone',ic:'🗺️',nome:'Zone & Mappa',desc:'Zone e clienti sulla mappa.'},
+  ],
+  arrivo:[
+    {id:'prenota',ic:'🗓️',nome:'Prenotazioni',desc:'Appuntamenti online.'},
+    {id:'magazzino',ic:'📦',nome:'Magazzino',desc:'Scorte e soglie.'},
+    {id:'catalogo',ic:'🏷️',nome:'Catalogo/Listino',desc:'Prodotti e prezzi.'},
+    {id:'fatture',ic:'🧾',nome:'Fatture',desc:'Preventivi e fatture.'},
+    {id:'documenti',ic:'📁',nome:'Documenti',desc:'Archivio file e contratti.'},
+    {id:'report',ic:'📊',nome:'Report',desc:'Statistiche e grafici.'},
+    {id:'fidelity',ic:'🎁',nome:'Fidelity',desc:'Punti e promozioni.'},
+    {id:'turni',ic:'⏱️',nome:'Turni & Presenze',desc:'Turni e timbrature.'},
+  ],
+};
+const catName=id=>{for(const k of['base','pronti','arrivo']){const m=MODULE_CATALOG[k].find(x=>x.id===id);if(m)return m.nome;}return id;};
+/* moduli attivi oggi sul tenant (base sempre + extra accesi dal super-admin) */
+const activeModuleIds=()=>{const base=MODULE_CATALOG.base.map(m=>m.id);const extra=(ACTIVE_MODULES||[]).filter(id=>!base.includes(id)&&id!=='notif');return[...base,...extra];};
 /* ---- accesso (Supabase Auth) ---- */
 const me=()=>S.session?byId(S.employees,S.session.empId):null;
 const isOwner=()=>{const m=me();return !!(m&&m.isOwner);};
@@ -458,8 +514,8 @@ function navKey(){return 'caywork_nav_'+(S.session?S.session.empId:'x');}
 function getBottomNav(){const k=navKey();if(bottomNavMem[k])return bottomNavMem[k];try{const v=JSON.parse(localStorage.getItem(k)||'null');if(Array.isArray(v)&&v.length){bottomNavMem[k]=v;return v;}}catch(e){}return NAV_DEFAULT;}
 function setBottomNav(ids){const k=navKey();bottomNavMem[k]=ids.slice();try{localStorage.setItem(k,JSON.stringify(ids));}catch(e){}}
 function renderNav(){
-  {const bt=$('#brandtop');if(bt)bt.textContent=BRAND.name||'La tua app';}
-  const vis=VIEWS.filter(v=>v.id==='hub'||v.id==='notif'||(v.id==='zone'?can('clients'):can(v.id)));
+  {const bt=$('#brandtop');if(bt)bt.textContent=BRAND.name||'Modula';}
+  const vis=visViews();
   const ps=pushState();const sep='margin-top:10px;border-top:1px solid var(--line);border-radius:0;padding-top:14px';
   const pushNav=ps==='unsupported'?''
     :ps==='on'?`<div class="ni" style="${sep};color:var(--cy)" onclick="pushTest()"><span class="ic">📩</span>Notifica di prova</div><div class="ni" style="color:var(--teal)" onclick="disablePush()"><span class="ic">🔔</span>Notifiche attive — disattiva</div>`
@@ -467,9 +523,11 @@ function renderNav(){
     :`<div class="ni" style="${sep};color:var(--amber)" onclick="enablePush()"><span class="ic">🔔</span>Attiva notifiche</div>`;
   $('#navside').innerHTML=vis.map(v=>{const c=v.id==='notif'?notifCount():0;return`<div class="ni ${view===v.id?'act':''}" onclick="nav('${v.id}')"><span class="ic">${v.ic}</span>${v.label}${c?` <span class="badge" style="margin-left:auto;border-color:var(--cy);color:var(--cy)">${c}</span>`:''}</div>`;}).join('')
     +pushNav
-    +(isOwner()?`<div class="ni" style="${ps==='unsupported'?sep:''}" onclick="openBackup()"><span class="ic">💾</span>Backup dati</div>`:'')
+    +(isOwner()?`<div class="ni" style="${ps==='unsupported'?sep:''}" onclick="openModuleStore()"><span class="ic">🧩</span>Moduli & richieste</div>`:'')
+    +(isOwner()?`<div class="ni" onclick="openBackup()"><span class="ic">💾</span>Backup dati</div>`:'')
     +(isOwner()?`<div class="ni" onclick="openImport()"><span class="ic">📥</span>Importa dati</div>`:'')
     +`<div class="ni" onclick="toggleTheme()"><span class="ic">${getTheme()==='dark'?'☀️':'🌙'}</span>${getTheme()==='dark'?'Tema chiaro':'Tema scuro'}</div>`
+    +`<div class="ni" onclick="openChangePassword()"><span class="ic">🔑</span>Cambia password</div>`
     +`<div class="ni" onclick="logout()"><span class="ic">🚪</span>Esci (${esc(me().name)})</div>`;
   const allowed=new Set(vis.map(v=>v.id));
   let chosen=getBottomNav().filter(id=>allowed.has(id)).slice(0,5);
@@ -484,7 +542,7 @@ function renderNav(){
   }).join('');
 }
 function openMenu(){
-  const vis=VIEWS.filter(v=>v.id==='hub'||v.id==='notif'||(v.id==='zone'?can('clients'):can(v.id)));
+  const vis=visViews();
   const inBar=new Set(getBottomNav().filter(id=>vis.some(v=>v.id===id)).slice(0,5));
   const overflow=vis.filter(v=>!inBar.has(v.id));
   const ps=pushState();
@@ -497,15 +555,37 @@ function openMenu(){
     ${overflow.map(v=>`<div class="sg" style="padding:13px" onclick="closeSheet();nav('${v.id}')">${v.ic} ${v.label}${v.id==='notif'&&notifCount()?' ('+notifCount()+')':''}</div>`).join('')||'<div class="subtle" style="padding:4px 2px">Tutte le sezioni sono già nella barra in basso.</div>'}
     <div class="sg" style="padding:13px;border-color:var(--cy);color:var(--cy)" onclick="closeSheet();editBottomNav()">⚙️ Personalizza la barra in basso</div>
     ${pushRow}
+    ${isOwner()?`<div class="sg" style="padding:13px;border-color:var(--cy);color:var(--cy)" onclick="closeSheet();openModuleStore()">🧩 Moduli & richieste</div>`:''}
     ${isOwner()?`<div class="sg" style="padding:13px;border-color:var(--line2)" onclick="closeSheet();openBackup()">💾 Backup dati</div>`:''}
     ${isOwner()?`<div class="sg" style="padding:13px;border-color:var(--line2)" onclick="closeSheet();openImport()">📥 Importa dati</div>`:''}
     <div class="sg" style="padding:13px" onclick="closeSheet();toggleTheme()">${getTheme()==='dark'?'☀️ Tema chiaro':'🌙 Tema scuro'}</div>
+    <div class="sg" style="padding:13px" onclick="closeSheet();openChangePassword()">🔑 Cambia password</div>
     <div class="sg" style="padding:13px;border-color:rgba(214,69,40,.35);color:var(--coral)" onclick="logout()">🚪 Esci (${esc(me().name)})</div>
   </div>`);
 }
+function openChangePassword(){
+  if(DEMO){toast('Demo: in un\'app reale qui cambi la password');return;}
+  openSheet(`<h3>Cambia password <span class="x" onclick="closeSheet()">✕</span></h3>
+    <div class="subtle" style="margin-bottom:10px">Imposta una nuova password per il tuo accesso (almeno 6 caratteri).</div>
+    <input id="cp-pw" class="txt" type="password" placeholder="Nuova password" autocomplete="new-password">
+    <div style="height:8px"></div>
+    <input id="cp-pw2" class="txt" type="password" placeholder="Ripeti la password" autocomplete="new-password" onkeydown="if(event.key==='Enter')doChangePassword()">
+    <div id="cp-err" style="color:var(--coral);font-size:13px;min-height:18px;margin:6px 0"></div>
+    <button class="btn pri" style="width:100%" onclick="doChangePassword()">Salva nuova password</button>`);
+  setTimeout(()=>{const f=document.getElementById('cp-pw');if(f)f.focus();},60);
+}
+async function doChangePassword(){
+  const pw=document.getElementById('cp-pw').value, pw2=document.getElementById('cp-pw2').value;
+  const er=document.getElementById('cp-err'); er.textContent='';
+  if(pw.length<6){er.textContent='Almeno 6 caratteri';return;}
+  if(pw!==pw2){er.textContent='Le due password non coincidono';return;}
+  const{error}=await sb.auth.updateUser({password:pw});
+  if(error){er.textContent=error.message;return;}
+  closeSheet();toast('✓ Password aggiornata');
+}
 /* personalizzazione barra in basso */
 function editBottomNav(){
-  const vis=VIEWS.filter(v=>v.id==='hub'||v.id==='notif'||(v.id==='zone'?can('clients'):can(v.id)));
+  const vis=visViews();
   const cur=getBottomNav().filter(id=>vis.some(v=>v.id===id));
   openSheet(`<h3>⚙️ Barra in basso <span class="x" onclick="closeSheet()">✕</span></h3>
   <div class="subtle" style="margin-bottom:10px">Tocca le sezioni che vuoi nella barra in basso (massimo 5). Le altre restano dentro «☰ Altro».</div>
@@ -527,6 +607,81 @@ function saveBottomNav(){
   setBottomNav(ids);closeSheet();renderNav();toast('✓ Barra aggiornata');
 }
 function resetBottomNav(){setBottomNav(NAV_DEFAULT);closeSheet();renderNav();toast('↩ Barra ripristinata');}
+/* ====== MODULI & RICHIESTE (solo titolare) ======
+   Il titolare vede i moduli attivi, può spuntare quelli che vorrebbe in più o
+   descrivere un modulo su misura, e inviare la richiesta via email a Modula.
+   NON attiva nulla: l'attivazione la decide il super-admin dalla console admin. */
+function openModuleStore(){
+  const active=new Set(activeModuleIds());
+  const card=(m,state)=>{
+    // state: 'on' = già attivo · 'add' = richiedibile (pronto) · 'soon' = su misura/in arrivo
+    const on=state==='on';
+    const tag=on?'<span class="badge" style="border-color:var(--teal);color:var(--teal)">attivo</span>'
+      :state==='soon'?'<span class="badge" style="border-color:var(--amber);color:var(--amber)">su misura</span>':'';
+    const click=on?'':`onclick="this.classList.toggle('on')"`;
+    return `<div class="sg modpick ${on?'lock':''}" data-id="${m.id}" data-state="${state}" ${click}
+      style="padding:12px;justify-content:flex-start;align-items:flex-start;gap:10px;${on?'opacity:.7;cursor:default':''}">
+      <span style="font-size:20px">${m.ic}</span>
+      <div style="text-align:left;flex:1"><div style="font-weight:600">${esc(m.nome)} ${tag}</div>
+      <div class="subtle" style="font-size:11.5px;margin-top:2px">${esc(m.desc)}</div></div>
+    </div>`;
+  };
+  const baseCards=MODULE_CATALOG.base.map(m=>card(m,'on')).join('');
+  const prontiAttivi=MODULE_CATALOG.pronti.filter(m=>active.has(m.id)).map(m=>card(m,'on')).join('');
+  const prontiAdd=MODULE_CATALOG.pronti.filter(m=>!active.has(m.id)).map(m=>card(m,'add')).join('');
+  const arrivo=MODULE_CATALOG.arrivo.map(m=>card(m,'soon')).join('');
+  openSheet(`<h3>🧩 Moduli & richieste <span class="x" onclick="closeSheet()">✕</span></h3>
+  <div class="subtle" style="margin-bottom:12px">Questi sono i moduli della tua app. Spunta quelli che vorresti <b>aggiungere</b> o descrivi un <b>modulo su misura</b>: la richiesta arriva a Modula, che lo attiva o lo costruisce per te.</div>
+
+  <div class="modstore-sec">✓ Attivi nella tua app</div>
+  <div class="seg" style="flex-direction:column;gap:8px">${baseCards}${prontiAttivi}</div>
+
+  ${prontiAdd?`<div class="modstore-sec">➕ Puoi aggiungerli subito</div>
+  <div class="seg" style="flex-direction:column;gap:8px">${prontiAdd}</div>`:''}
+
+  <div class="modstore-sec">✨ Su misura / in arrivo</div>
+  <div class="seg" style="flex-direction:column;gap:8px">${arrivo}</div>
+
+  <div class="fld" style="margin-top:14px"><label>Modulo su misura — descrivi cosa ti serve</label>
+    <textarea id="mod-rich" rows="3" placeholder="es. «Un modulo per i controlli F-Gas: per ogni apparecchio data del controllo, kg di gas e avviso quando scade.»" style="width:100%;background:var(--bg2);border:1px solid var(--line);border-radius:9px;color:var(--t1);font:inherit;padding:10px;resize:vertical"></textarea></div>
+
+  <div class="actions"><button class="btn ghost" onclick="closeSheet()">Annulla</button><button class="btn pri" onclick="sendModuleRequest()">✉️ Invia richiesta</button></div>`);
+}
+function sendModuleRequest(){
+  const picks=[...document.querySelectorAll('.modpick.on')].map(el=>({id:el.dataset.id,state:el.dataset.state}));
+  const add=picks.filter(p=>p.state==='add').map(p=>catName(p.id));
+  const soon=picks.filter(p=>p.state==='soon').map(p=>catName(p.id));
+  const rich=(document.getElementById('mod-rich')?.value||'').trim();
+  if(!add.length&&!soon.length&&!rich){toast('Spunta un modulo o descrivi cosa ti serve');return;}
+  const support=CFG.SUPPORT_EMAIL||'lollyberry00@gmail.com';
+  const who=me();
+  const lines=[
+    `RICHIESTA MODULI — ${BRAND.name||'(azienda)'}`,
+    `Da: ${who?who.name:''}`,
+    `Attivi ora: ${activeModuleIds().map(catName).join(', ')}`,
+    ``,
+    add.length?`Da ATTIVARE (già pronti): ${add.join(', ')}`:'',
+    soon.length?`Su misura / in arrivo richiesti: ${soon.join(', ')}`:'',
+    rich?`\nMODULO SU MISURA (descrizione):\n${rich}`:'',
+  ].filter(Boolean);
+  const sub=`Richiesta moduli — ${BRAND.name||'azienda'}`;
+  window.location.href=`mailto:${support}?subject=${encodeURIComponent(sub)}&body=${encodeURIComponent(lines.join('\n'))}`;
+  closeSheet();toast('📨 Apro l\'email con la tua richiesta');
+}
+/* il titolare ha finito i posti del piano → chiede a Modula di aumentarli (via email) */
+function requestMoreSeats(){
+  const support=CFG.SUPPORT_EMAIL||'lollyberry00@gmail.com';
+  const who=me();
+  const body=[
+    `PIÙ POSTI DIPENDENTE — ${BRAND.name||'(azienda)'}`,
+    `Da: ${who?who.name:''}`,
+    `Posti del piano: ${MAX_EMP!=null?MAX_EMP:'illimitati'} · già usati: ${seatCount()}`,
+    ``,
+    `Vorrei aumentare i posti dipendente. Nuovo numero desiderato: ______`
+  ].join('\n');
+  window.location.href=`mailto:${support}?subject=${encodeURIComponent('Più posti — '+(BRAND.name||'azienda'))}&body=${encodeURIComponent(body)}`;
+  closeSheet();toast('📨 Apro l\'email per la richiesta');
+}
 function openBackup(){
   const counts=`${S.clients.length} clienti · ${S.maintenances.length} manutenzioni · ${S.pellet.length} consegne · ${S.sites.length} cantieri · ${S.appointments.length} appuntamenti · ${S.notes.length} note · ${S.lists.length} liste`;
   openSheet(`<h3>💾 Backup & impostazioni <span class="x" onclick="closeSheet()">✕</span></h3>
@@ -593,7 +748,7 @@ function importBackup(ev){
       for(const{siteId,a}of pendingAtt){
         try{
           const blob=await(await fetch(a.dataUrl)).blob();
-          const path=siteId+'/'+uid()+'-'+a.name;
+          const path=TENANT_ID+'/site/'+siteId+'/'+uid()+'-'+a.name;
           await sb.storage.from('allegati').upload(path,blob,{contentType:blob.type||'application/octet-stream'});
           const row={id:uid(),site_id:siteId,name:a.name,type:a.type||'file',storage_path:path,date:a.date||todayIso()};
           await sb.from('attachments').insert(row);
@@ -871,11 +1026,11 @@ function undoImport(){
 function render(){
   if(!S.session||!me()){renderLock();return;}
   const lk=document.querySelector('.lock');if(lk)lk.remove();
-  if(!can(view)&&view!=='hub'&&view!=='notif')view='hub';
+  if((!can(view)||!moduleActive(view))&&view!=='hub'&&view!=='notif')view='hub';
   S.speaker=S.session.empId;
   renderNav();
   $('#todaypill').textContent=GG[new Date().getDay()].slice(0,3)+' '+new Date().getDate()+' '+MESI[new Date().getMonth()].slice(0,3);
-  const R={hub:window.renderHub,cal:window.renderCal,notes:window.renderNotes,notif:window.renderNotif,man:window.renderMan,clients:window.renderClients,zone:window.renderZone,conti:window.renderConti,emps:window.renderEmps};
+  const R={hub:window.renderHub,cal:window.renderCal,notes:window.renderNotes,notif:window.renderNotif,man:window.renderMan,pellet:window.renderPellet,sites:window.renderSites,macchine:window.renderMacchine,clients:window.renderClients,zone:window.renderZone,conti:window.renderConti,emps:window.renderEmps};
   $('#main').innerHTML='';(R[view]||window.renderHub)();
   if(view==='notif'&&notifTab==='chat'){const sc=$('#chatscroll');if(sc)sc.scrollTop=sc.scrollHeight;}
 }
@@ -889,7 +1044,7 @@ function lockShell(inner,sub){
   const box=document.createElement('div');box.className='lock';
   const subLine=sub==='REGISTRAZIONE'?'Crea il tuo accesso':sub==='COLLEGA ACCOUNT'?'Collega il tuo account':sub==='SINCRONIZZAZIONE'?'Un attimo, preparo i tuoi dati…':'Bentornato 👋 — accedi al gestionale';
   box.innerHTML=`${BRAND.logo?`<img src="${BRAND.logo}" alt="${esc(BRAND.name||'')}" style="width:200px;max-width:70%;margin-bottom:6px" onerror="this.style.display='none';var f=document.getElementById('logofb');if(f)f.style.display='flex'">`:''}
-  <div id="logofb" class="llogo" style="${BRAND.logo?'display:none;':'display:flex;'}margin-bottom:6px"><span class="dot"></span>${esc(BRAND.name||'La tua app')}</div>
+  <div id="logofb" class="llogo" style="${BRAND.logo?'display:none;':'display:flex;'}margin-bottom:6px"><span class="dot"></span>${esc(BRAND.name||'Modula')}</div>
   ${BRAND.tagline?`<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="height:1px;width:26px;background:linear-gradient(90deg,transparent,#5E9E2E)"></span><span style="font-family:var(--mono);font-size:10px;letter-spacing:3px;color:var(--teal)">${esc(BRAND.tagline)}</span><span style="height:1px;width:26px;background:linear-gradient(90deg,#5BA02C,transparent)"></span></div>`:''}
   <div style="font-size:13px;color:var(--t2);margin-bottom:26px">${subLine}</div>
   <div class="lbox">${inner}</div>
@@ -900,15 +1055,21 @@ function renderLock(){
   if(authMode==='loading'){lockShell('<div style="text-align:center;color:var(--t2);font-size:14px;padding:18px 0">🌊 Carico i dati…</div>','SINCRONIZZAZIONE');return;}
   if(authMode==='link'){
     lockShell(`
-      <div style="font-size:13.5px;color:var(--t2);margin-bottom:14px;text-align:center">Account creato! Ora collegalo:</div>
+      <div style="font-size:13.5px;color:var(--t2);margin-bottom:14px;text-align:center">Account creato! Inserisci il codice che hai ricevuto:</div>
       <input id="lk-code" class="txt" placeholder="Codice di invito (es. MARCO-7K2F)" style="text-transform:uppercase;font-family:var(--mono);letter-spacing:1px;text-align:center">
       <div class="lerr" id="lk-err"></div>
-      <button class="btn pri" style="width:100%" onclick="doClaimInvite()">Collega con il codice</button>
-      <div style="border-top:1px dashed var(--line2);margin:16px 0 12px"></div>
-      <div style="font-size:12px;color:var(--t3);margin-bottom:8px;text-align:center">Oppure, se sei il titolare e questa è la prima volta:</div>
-      <input id="lk-name" class="txt" placeholder="Il tuo nome (es. Loris)">
-      <button class="btn" style="width:100%" onclick="doClaimOwner()">👑 Sono il titolare</button>
+      <button class="btn pri" style="width:100%" onclick="doClaimInvite()">Entra con il codice</button>
+      <div style="font-size:11.5px;color:var(--t3);margin:14px 0 4px;text-align:center;line-height:1.6">Il codice te lo dà chi gestisce la tua azienda<br>(o Modula, se sei il titolare).</div>
       <div class="llink" onclick="logout()">← Esci</div>`,'COLLEGA ACCOUNT');
+    return;
+  }
+  if(authMode==='reset'){
+    lockShell(`
+      <div style="font-size:13.5px;color:var(--t2);margin-bottom:14px;text-align:center">Imposta la tua nuova password</div>
+      <input id="lk-pass" class="txt" type="password" placeholder="Nuova password (min 6)" autocomplete="new-password" onkeydown="if(event.key==='Enter')doSetNewPassword()">
+      <div class="lerr" id="lk-err"></div>
+      <button class="btn pri" style="width:100%" onclick="doSetNewPassword()">Salva password</button>`,'GESTIONALE');
+    setTimeout(()=>{const f=$('#lk-pass');if(f)f.focus();},80);
     return;
   }
   const reg=authMode==='signup';
@@ -917,11 +1078,28 @@ function renderLock(){
     <input id="lk-pass" class="txt" type="password" placeholder="Password (min 6)" autocomplete="${reg?'new-password':'current-password'}" onkeydown="if(event.key==='Enter')${reg?'doSignup()':'doLogin()'}">
     <div class="lerr" id="lk-err"></div>
     <button class="btn pri" style="width:100%" onclick="${reg?'doSignup()':'doLogin()'}">${reg?'Crea account':'Entra'}</button>
-    <div class="llink" onclick="authMode='${reg?'login':'signup'}';renderLock()">${reg?'← Ho già un account':'Prima volta? Registrati →'}</div>`,
+    <div class="llink" onclick="authMode='${reg?'login':'signup'}';renderLock()">${reg?'← Ho già un account':'Prima volta? Registrati →'}</div>
+    ${reg?'':`<div class="llink" onclick="doForgot()" style="margin-top:6px;opacity:.85">Password dimenticata?</div>`}`,
     reg?'REGISTRAZIONE':'GESTIONALE');
   setTimeout(()=>{const f=$('#lk-email');if(f)f.focus();},80);
 }
 function lockErr(m){const e=$('#lk-err');if(e)e.textContent=m;authBusy=false;}
+async function doForgot(){
+  const email=($('#lk-email')?$('#lk-email').value.trim():'');
+  if(!email)return lockErr('Scrivi prima la tua email, poi tocca «Password dimenticata»');
+  const{error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});
+  if(error)return lockErr(error.message);
+  lockShell(`<div style="text-align:center;color:var(--t2);font-size:14px;line-height:1.6;padding:8px 0">📧 Email inviata a<br><b style="color:var(--t1)">${esc(email)}</b><br>Apri il link nell'email e potrai impostare una nuova password.</div><div class="llink" onclick="authMode='login';renderLock()" style="margin-top:14px">← Torna al login</div>`,'GESTIONALE');
+}
+async function doSetNewPassword(){
+  if(authBusy)return;authBusy=true;
+  const pw=$('#lk-pass')?$('#lk-pass').value:'';
+  if(pw.length<6)return lockErr('Almeno 6 caratteri');
+  const{error}=await sb.auth.updateUser({password:pw});
+  if(error)return lockErr(error.message);
+  authBusy=false;try{toast('✓ Password aggiornata');}catch(e){}
+  authMode='loading';renderLock();await postAuth();
+}
 async function doLogin(){
   if(authBusy)return;authBusy=true;
   const email=$('#lk-email').value.trim(),pass=$('#lk-pass').value;
@@ -938,15 +1116,6 @@ async function doSignup(){
   if(error)return lockErr(error.message.includes('already')?'Email già registrata — torna al login':error.message);
   authBusy=false;postAuth();
 }
-async function doClaimOwner(){
-  if(authBusy)return;authBusy=true;
-  const name=$('#lk-name').value.trim();
-  if(!name)return lockErr('Scrivi il tuo nome');
-  const{data,error}=await sb.rpc('claim_owner',{owner_name:name});
-  if(error)return lockErr(error.message);
-  if(!data)return lockErr('Il titolare esiste già — usa un codice di invito');
-  authBusy=false;postAuth();
-}
 async function doClaimInvite(){
   if(authBusy)return;authBusy=true;
   const code=$('#lk-code').value.trim();
@@ -955,6 +1124,39 @@ async function doClaimInvite(){
   if(error)return lockErr(error.message);
   if(!data)return lockErr('Codice non valido o già usato');
   authBusy=false;postAuth();
+}
+/* carica l'azienda (tenant) dell'utente: nome, logo, accento e MODULI ATTIVI */
+async function loadTenant(tenantId){
+  ACTIVE_MODULES=null;
+  if(!tenantId)return;
+  try{
+    const{data:t}=await sb.from('tenants').select('*').eq('id',tenantId).maybeSingle();
+    if(!t)return;
+    TENANT_ACTIVE=t.active!==false;
+    BRAND={name:t.name||'',tagline:t.tagline||'',logo:t.logo||''};
+    ACTIVE_MODULES=Array.isArray(t.modules)?t.modules:(t.modules?JSON.parse(t.modules):[]);
+    MAX_EMP=(typeof t.max_employees==='number'&&t.max_employees>0)?t.max_employees:null; /* 0 o assente = illimitato (es. piano Tutto compreso) */
+    if(t.accent){document.documentElement.style.setProperty('--cy',t.accent);document.documentElement.style.setProperty('--accent',t.accent);}
+    if(BRAND.name)document.title=BRAND.name;
+    applyBrandIcon(BRAND.logo);
+  }catch(e){console.error('loadTenant',e);}
+}
+/* Usa il logo del cliente come icona dell'app sulla home (PWA): apple-touch-icon per iOS,
+   manifest dinamico per Android/Chrome. Gli installati esistenti aggiornano l'icona solo reinstallando. */
+function applyBrandIcon(logo){
+  if(!logo)return;
+  try{
+    let at=document.querySelector('link[rel="apple-touch-icon"]');
+    if(!at){at=document.createElement('link');at.rel='apple-touch-icon';document.head.appendChild(at);}
+    at.href=logo;
+    const nm=BRAND.name||'Modula';
+    const man={name:nm,short_name:nm.slice(0,18),start_url:'./app.html',scope:'./',display:'standalone',orientation:'portrait',background_color:'#F5F2EA',theme_color:BRAND.accent||'#F5F2EA',
+      icons:[{src:logo,sizes:'192x192',type:'image/png',purpose:'any maskable'}]};
+    const url=URL.createObjectURL(new Blob([JSON.stringify(man)],{type:'application/manifest+json'}));
+    let link=document.querySelector('link[rel="manifest"]');
+    if(!link){link=document.createElement('link');link.rel='manifest';document.head.appendChild(link);}
+    link.href=url;
+  }catch(e){/* ignora */}
 }
 async function postAuth(){
   try{
@@ -965,6 +1167,9 @@ async function postAuth(){
     if(error)throw error;
     if(!emp){authMode='link';renderLock();return;}
     if(!emp.active){await sb.auth.signOut();authMode='login';renderLock();setTimeout(()=>lockErr('Accesso disattivato dal titolare'),100);return;}
+    TENANT_ID=emp.tenant_id;
+    await loadTenant(emp.tenant_id);
+    if(!TENANT_ACTIVE){await sb.auth.signOut();authMode='login';renderLock();setTimeout(()=>lockErr('Account sospeso — contatta Modula per riattivarlo'),100);return;}
     await loadAll();
     const my=byId(S.employees,emp.id)||MAPS.employees.fromDb(emp);
     if(!byId(S.employees,emp.id))S.employees.push(my);
@@ -1061,7 +1266,7 @@ async function addClientPhoto(clientId,ev){
     if(w>max||h>max){const k=max/Math.max(w,h);w=Math.round(w*k);h=Math.round(h*k);}
     const cv=document.createElement('canvas');cv.width=w;cv.height=h;cv.getContext('2d').drawImage(img,0,0,w,h);
     cv.toBlob(async blob=>{try{
-      const name='foto-'+todayIso()+'.jpg';const path='client/'+clientId+'/'+uid()+'-'+name;
+      const name='foto-'+todayIso()+'.jpg';const path=TENANT_ID+'/client/'+clientId+'/'+uid()+'-'+name;
       const{error:e1}=await sb.storage.from('allegati').upload(path,blob,{contentType:'image/jpeg'});if(e1)throw e1;
       const row={id:uid(),client_id:clientId,name,type:'img',storage_path:path,date:todayIso()};
       const{error:e2}=await sb.from('client_attachments').insert(row);if(e2)throw e2;
@@ -1073,7 +1278,7 @@ async function addClientPhoto(clientId,ev){
 async function addClientFile(clientId,ev){
   const f=ev.target.files[0];if(!f)return;if(f.size>25*1024*1024){toast('⚠ File oltre 25MB');return;}
   try{
-    const path='client/'+clientId+'/'+uid()+'-'+f.name;
+    const path=TENANT_ID+'/client/'+clientId+'/'+uid()+'-'+f.name;
     const{error:e1}=await sb.storage.from('allegati').upload(path,f,{contentType:f.type||'application/octet-stream'});if(e1)throw e1;
     const row={id:uid(),client_id:clientId,name:f.name,type:'file',storage_path:path,date:todayIso()};
     const{error:e2}=await sb.from('client_attachments').insert(row);if(e2)throw e2;
@@ -1223,6 +1428,9 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 function demoBoot(){
   const oid=uid(),e2=uid(),c1=uid(),c2=uid(),c3=uid();const t=todayIso();const now=Date.now();
   S=blank();
+  BRAND={name:'Demo Impianti Verdi',tagline:'gestionale dimostrativo',logo:''};
+  ACTIVE_MODULES=['cal','notes','clients','emps','man','pellet','sites','zone','conti']; /* demo: moduli mostrati (Macchine escluso, e' su misura di ptek) */
+  {const bt=document.getElementById('brandtop');if(bt)bt.textContent=BRAND.name;}document.title=BRAND.name;
   S.employees=[
     {id:oid,name:'Tu (demo)',role:'Titolare',phone:'',perms:[],isOwner:true,active:true},
     {id:e2,name:'Luca Bianchi',role:'Tecnico',phone:'333 0102030',perms:['man','clients','cal','conti'],isOwner:false,active:true}
@@ -1254,9 +1462,14 @@ function demoBoot(){
 /* ================= BOOT ================= */
 (async()=>{
   if(DEMO){ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',demoBoot);else demoBoot(); return; }
+  let recovering=false;
+  sb.auth.onAuthStateChange((event)=>{ if(event==='PASSWORD_RECOVERY'){ recovering=true; authMode='reset'; renderLock(); } });
   try{
+    // se si arriva da un link di recupero password, l'hash contiene type=recovery
+    if(/type=recovery/.test(location.hash)){ authMode='reset'; renderLock(); }
     const{data:{session}}=await sb.auth.getSession();
-    if(session){postAuth();}else{renderLock();}
+    if(recovering||/type=recovery/.test(location.hash)){ /* aspetta che l'utente imposti la nuova password */ }
+    else if(session){postAuth();}else{renderLock();}
   }catch(e){renderLock();}
   setTimeout(checkUpdate,4000);
 })();

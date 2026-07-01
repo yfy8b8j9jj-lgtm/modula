@@ -259,4 +259,6 @@ body::before{content:'';position:fixed;inset:0;background:
 .sig-hint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#aab;font-size:13px;pointer-events:none;font-style:italic}
 .sig-tools{display:flex;justify-content:space-between;align-items:center;margin-top:6px}
 .subtle{font-size:11.5px;color:var(--t3);line-height:1.5}
+.modstore-sec{font-family:var(--mono);font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--t2);margin:18px 0 8px}
+.sg.modpick.on{border-color:var(--cy);background:color-mix(in srgb,var(--cy) 12%,transparent)}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
