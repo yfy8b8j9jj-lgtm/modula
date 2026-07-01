@@ -100,8 +100,11 @@ async function loadAll(){
     sb.from('chat').select('*').order('created_at',{ascending:true}).limit(300),
     q('call_log'),q('expenses'),q('maint_prices'),sb.from('settings').select('*').eq('id',1).maybeSingle()
   ]);
-  const err=[cl,em,te,ma,ap,pe,si,sl,at,no,ng,li,it,ch,cg].find(x=>x.error);
+  /* te (time_entries) è ESCLUSO dal controllo bloccante: se la tabella non è ancora
+     stata creata su Supabase, l'app parte comunque (presenze vuote) invece di crashare. */
+  const err=[cl,em,ma,ap,pe,si,sl,at,no,ng,li,it,ch,cg].find(x=>x.error);
   if(err)throw err.error;
+  if(te.error)console.warn('time_entries non disponibile (esegui schema.sql):',te.error.message);
   S.clients=(cl.data||[]).map(MAPS.clients.fromDb);
   S.employees=(em.data||[]).map(MAPS.employees.fromDb);
   S.timeEntries=(te.data||[]).map(MAPS.timeEntries.fromDb);
