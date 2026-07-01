@@ -37,7 +37,7 @@ function visViews(){return VIEWS.filter(v=>v.id==='hub'||v.id==='notif'||((v.id=
 
 const APP_VERSION='2026.06.30-113212';
 
-const blank=()=>({clients:[],employees:[],notes:[],noteGroups:[],appointments:[],maintenances:[],pellet:[],sites:[],chat:[],lists:[],callLog:[],expenses:[],maintPrices:[],settings:{bagsPerPallet:70,companyName:'',pricePerTon:null,pricePerBag:null},speaker:null,session:null});
+const blank=()=>({clients:[],employees:[],timeEntries:[],notes:[],noteGroups:[],appointments:[],maintenances:[],pellet:[],sites:[],chat:[],lists:[],callLog:[],expenses:[],maintPrices:[],settings:{bagsPerPallet:70,companyName:'',pricePerTon:null,pricePerBag:null},speaker:null,session:null});
 let S=blank();
 const uid=()=>(crypto.randomUUID?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==='x'?r:(r&3|8)).toString(16);}));
 
@@ -48,8 +48,11 @@ const MAPS={
   toDb:c=>({id:c.id,name:c.name,phone:c.phone||'',zone:c.zone||'',group:c.group||'',address:c.address||'',plant:c.plant||'',pellet:c.pellet||'',maintenance:c.maintenance||'',notes:c.notes||'',blocked:!!c.blocked,first_name:c.firstName||'',last_name:c.lastName||'',street:c.street||'',street_no:c.streetNo||'',cap:c.cap||'',town:c.town||'',email:c.email||'',lat:(typeof c.lat==='number'?c.lat:null),lng:(typeof c.lng==='number'?c.lng:null),geo_src:c.geoSrc||null}),
   fromDb:r=>({id:r.id,name:r.name,phone:r.phone||'',zone:r.zone||'',group:r.group||'',address:r.address||'',plant:r.plant||'',pellet:r.pellet||'',maintenance:r.maintenance||'',notes:r.notes||'',blocked:!!r.blocked,firstName:r.first_name||'',lastName:r.last_name||'',street:r.street||'',streetNo:r.street_no||'',cap:r.cap||'',town:r.town||'',email:r.email||'',lat:(typeof r.lat==='number'?r.lat:null),lng:(typeof r.lng==='number'?r.lng:null),geoSrc:r.geo_src||null,created:Date.parse(r.created_at)||Date.now()})},
  employees:{tbl:'employees',
-  toDb:e=>({id:e.id,name:e.name,role:e.role||'',phone:e.phone||'',perms:e.perms||[],is_owner:!!e.isOwner,active:e.active!==false,invite_code:e.inviteCode||null,user_id:e.userId||null}),
-  fromDb:r=>({id:r.id,name:r.name,role:r.role||'',phone:r.phone||'',perms:r.perms||[],isOwner:!!r.is_owner,active:r.active!==false,inviteCode:r.invite_code,userId:r.user_id})},
+  toDb:e=>({id:e.id,name:e.name,role:e.role||'',phone:e.phone||'',perms:e.perms||[],is_owner:!!e.isOwner,active:e.active!==false,invite_code:e.inviteCode||null,user_id:e.userId||null,day_hours:num(e.dayHours),holiday_days:num(e.holidayDays)}),
+  fromDb:r=>({id:r.id,name:r.name,role:r.role||'',phone:r.phone||'',perms:r.perms||[],isOwner:!!r.is_owner,active:r.active!==false,inviteCode:r.invite_code,userId:r.user_id,dayHours:r.day_hours,holidayDays:r.holiday_days})},
+ timeEntries:{tbl:'time_entries',
+  toDb:t=>({id:t.id,emp_id:t.empId||null,date:t.date||null,type:t.type||'lavoro',hours:num(t.hours),start_t:t.start||null,end_t:t.end||null,break_min:num(t.brk),note:t.note||''}),
+  fromDb:r=>({id:r.id,empId:r.emp_id,date:r.date,type:r.type||'lavoro',hours:r.hours,start:r.start_t||'',end:r.end_t||'',brk:r.break_min,note:r.note||'',created:Date.parse(r.created_at)||Date.now()})},
  maintenances:{tbl:'maintenances',
   toDb:m=>({id:m.id,title:m.title,client_id:m.clientId||null,client_raw:m.clientRaw||null,employee_id:(m.employees&&m.employees[0])||m.employeeId||null,employees:m.employees||(m.employeeId?[m.employeeId]:[]),date:m.date||null,time:m.time||null,status:m.status||'da_fare',notes:m.notes||'',recur:m.recur||0,price:num(m.price),type:m.type||null,report:m.report||null,via:m.via||'manuale'}),
   fromDb:r=>({id:r.id,title:r.title,clientId:r.client_id,clientRaw:r.client_raw,employeeId:r.employee_id,employees:(r.employees&&r.employees.length)?r.employees:(r.employee_id?[r.employee_id]:[]),date:r.date,time:r.time,status:r.status,notes:r.notes||'',recur:r.recur||0,price:r.price,type:r.type||'',report:r.report,via:r.via,created:Date.parse(r.created_at)||Date.now()})},
@@ -90,17 +93,18 @@ let snapshot={};
 function snapRows(key,rows){const o={};rows.forEach(r=>o[r.id]=JSON.stringify(r));snapshot[key]=o;}
 async function loadAll(){
   const q=t=>sb.from(t).select('*');
-  const[cl,em,ma,ap,pe,si,sl,at,no,ng,li,it,ch,cg,ex,mp,st]=await Promise.all([
-    q('clients'),q('employees'),q('maintenances'),q('appointments'),q('pellet'),
+  const[cl,em,te,ma,ap,pe,si,sl,at,no,ng,li,it,ch,cg,ex,mp,st]=await Promise.all([
+    q('clients'),q('employees'),q('time_entries'),q('maintenances'),q('appointments'),q('pellet'),
     q('sites'),q('site_logs').order('created_at'),q('attachments'),
     q('notes'),q('note_groups'),q('lists'),q('list_items').order('position'),
     sb.from('chat').select('*').order('created_at',{ascending:true}).limit(300),
     q('call_log'),q('expenses'),q('maint_prices'),sb.from('settings').select('*').eq('id',1).maybeSingle()
   ]);
-  const err=[cl,em,ma,ap,pe,si,sl,at,no,ng,li,it,ch,cg].find(x=>x.error);
+  const err=[cl,em,te,ma,ap,pe,si,sl,at,no,ng,li,it,ch,cg].find(x=>x.error);
   if(err)throw err.error;
   S.clients=(cl.data||[]).map(MAPS.clients.fromDb);
   S.employees=(em.data||[]).map(MAPS.employees.fromDb);
+  S.timeEntries=(te.data||[]).map(MAPS.timeEntries.fromDb);
   S.maintenances=(ma.data||[]).map(MAPS.maintenances.fromDb).sort((a,b)=>b.created-a.created);
   S.appointments=(ap.data||[]).map(MAPS.appointments.fromDb).sort((a,b)=>b.created-a.created);
   S.pellet=(pe.data||[]).map(MAPS.pellet.fromDb).sort((a,b)=>b.created-a.created);
@@ -121,6 +125,7 @@ async function loadAll(){
 function dbRows(){
   return{
     employees:S.employees.map(MAPS.employees.toDb),
+    timeEntries:S.timeEntries.map(MAPS.timeEntries.toDb),
     clients:S.clients.map(MAPS.clients.toDb),
     noteGroups:S.noteGroups.map(MAPS.noteGroups.toDb),
     lists:S.lists.map(MAPS.lists.toDb),
@@ -136,9 +141,9 @@ function dbRows(){
     maintPrices:S.maintPrices.map(MAPS.maintPrices.toDb),
   };
 }
-const TBL={employees:'employees',clients:'clients',noteGroups:'note_groups',lists:'lists',maintenances:'maintenances',appointments:'appointments',pellet:'pellet',sites:'sites',notes:'notes',listItems:'list_items',siteLogs:'site_logs',callLog:'call_log',expenses:'expenses',maintPrices:'maint_prices'};
-const UP_ORDER=['employees','clients','noteGroups','lists','maintenances','appointments','pellet','sites','expenses','notes','listItems','siteLogs','callLog','maintPrices'];
-const DEL_ORDER=['maintPrices','callLog','siteLogs','listItems','notes','expenses','sites','pellet','appointments','maintenances','lists','noteGroups','clients','employees'];
+const TBL={employees:'employees',timeEntries:'time_entries',clients:'clients',noteGroups:'note_groups',lists:'lists',maintenances:'maintenances',appointments:'appointments',pellet:'pellet',sites:'sites',notes:'notes',listItems:'list_items',siteLogs:'site_logs',callLog:'call_log',expenses:'expenses',maintPrices:'maint_prices'};
+const UP_ORDER=['employees','timeEntries','clients','noteGroups','lists','maintenances','appointments','pellet','sites','expenses','notes','listItems','siteLogs','callLog','maintPrices'];
+const DEL_ORDER=['maintPrices','callLog','siteLogs','listItems','notes','expenses','sites','pellet','appointments','maintenances','lists','noteGroups','clients','timeEntries','employees'];
 function rebuildSnapshot(){const r=dbRows();for(const k of UP_ORDER)snapRows(k,r[k]);snapshot._settings=JSON.stringify(S.settings);}
 
 /* ---------- sync: diff e push ---------- */

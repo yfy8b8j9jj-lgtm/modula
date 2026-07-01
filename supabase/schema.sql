@@ -53,10 +53,28 @@ create table if not exists employees (
   active boolean default true,
   invite_code text,
   user_id uuid references auth.users(id) on delete set null,
+  day_hours numeric,       -- ore previste per giornata (per il calcolo degli straordinari)
+  holiday_days numeric,    -- giorni di ferie spettanti all'anno (per il saldo residuo)
   created_at timestamptz not null default now()
 );
 create unique index if not exists employees_invite_code_key on employees(invite_code) where invite_code is not null;
 create unique index if not exists employees_user_tenant_key on employees(user_id) where user_id is not null;
+-- per i database creati prima di queste colonne (idempotente):
+alter table employees add column if not exists day_hours numeric;
+alter table employees add column if not exists holiday_days numeric;
+
+-- presenze/orari: una riga = un giorno registrato per un dipendente.
+-- type: lavoro | ferie | malattia | permesso | assenza | festivo
+-- hours = ore lavorate (calcolate da start_t/end_t se presenti, altrimenti inserite a mano).
+-- emp_id in cascade: cancellando un dipendente spariscono i suoi cartellini.
+create table if not exists time_entries (
+  id uuid primary key default gen_random_uuid(),
+  tenant_id uuid not null references tenants(id) on delete cascade,
+  emp_id uuid references employees(id) on delete cascade,
+  date date, type text default 'lavoro', hours numeric,
+  start_t text, end_t text, break_min numeric, note text default '',
+  created_at timestamptz not null default now()
+);
 
 create table if not exists clients (
   id uuid primary key default gen_random_uuid(),
@@ -227,7 +245,7 @@ do $$
 declare t text;
 begin
   foreach t in array array[
-    'employees','clients','maintenances','appointments','pellet','sites','site_logs',
+    'employees','time_entries','clients','maintenances','appointments','pellet','sites','site_logs',
     'attachments','client_attachments','notes','note_groups','lists','list_items','chat','call_log',
     'expenses','maint_prices','push_subs'
   ] loop
@@ -243,7 +261,7 @@ do $$
 declare t text;
 begin
   foreach t in array array[
-    'tenants','employees','clients','maintenances','appointments','pellet','sites','site_logs',
+    'tenants','employees','time_entries','clients','maintenances','appointments','pellet','sites','site_logs',
     'attachments','client_attachments','notes','note_groups','lists','list_items','chat','call_log',
     'expenses','maint_prices','settings','push_subs'
   ] loop
@@ -269,7 +287,7 @@ do $$
 declare t text;
 begin
   foreach t in array array[
-    'employees','clients','maintenances','appointments','pellet','sites','site_logs',
+    'employees','time_entries','clients','maintenances','appointments','pellet','sites','site_logs',
     'attachments','client_attachments','notes','note_groups','lists','list_items','chat','call_log',
     'expenses','maint_prices','settings','push_subs'
   ] loop
@@ -349,7 +367,7 @@ begin
   foreach t in array array[
     'clients','maintenances','appointments','pellet','sites','site_logs','attachments','client_attachments',
     'notes','note_groups','lists','list_items','chat','call_log','expenses','maint_prices',
-    'employees','settings'
+    'employees','time_entries','settings'
   ] loop
     begin execute format('alter publication supabase_realtime add table %I', t);
     exception when duplicate_object then null; end;
